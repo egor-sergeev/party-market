@@ -2,7 +2,7 @@
 
 import { ControlPanel } from "@/components/control-panel/ControlPanel";
 import { Button } from "@/components/ui/button";
-import "@/lib/game-config";
+import { INITIAL_PLAYER_CASH } from "@/lib/game-config";
 import { initializeGame } from "@/lib/game-engine/initialization";
 import { useRoom } from "@/lib/hooks/useRoom";
 import { supabase } from "@/lib/supabase";

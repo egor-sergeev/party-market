@@ -19,6 +19,7 @@ export function useRoom(roomId: string) {
 
   const fetchRoomAndPlayers = useCallback(async () => {
     try {
+      // Get room and players
       const [roomResult, playersResult] = await Promise.all([
         supabase.from("rooms").select().eq("id", roomId).single(),
         supabase
@@ -36,7 +37,7 @@ export function useRoom(roomId: string) {
 
       // If game is in progress, fetch additional data
       if (roomResult.data.status === "IN_PROGRESS") {
-        // Fetch stocks with holders
+        // Fetch stocks
         const { data: stocksData, error: stocksError } = await supabase
           .from("stocks")
           .select()
@@ -44,7 +45,7 @@ export function useRoom(roomId: string) {
 
         if (stocksError) throw stocksError;
 
-        // Fetch player stocks
+        // Fetch player stocks with stock details
         const { data: playerStocks, error: playerStocksError } = await supabase
           .from("player_stocks")
           .select(
@@ -53,7 +54,10 @@ export function useRoom(roomId: string) {
             stock:stocks (*)
           `
           )
-          .eq("room_id", roomId);
+          .in(
+            "player_id",
+            playersResult.data.map((p) => p.id)
+          );
 
         if (playerStocksError) throw playerStocksError;
 
@@ -63,8 +67,11 @@ export function useRoom(roomId: string) {
           .select()
           .eq("room_id", roomId)
           .eq("round", roomResult.data.current_round)
+          .order("created_at", { ascending: false })
+          .limit(1)
           .single();
 
+        // Ignore if no event found
         if (eventError && eventError.code !== "PGRST116") throw eventError;
 
         // Fetch orders for current round
@@ -72,40 +79,42 @@ export function useRoom(roomId: string) {
           .from("orders")
           .select()
           .eq("room_id", roomId)
-          .eq("round", roomResult.data.current_round);
+          .eq("status", "pending");
 
         if (ordersError) throw ordersError;
 
         // Transform player data
         const portfolios = playersResult.data.map((player) => {
-          const playerStocksList = playerStocks.filter(
-            (ps) => ps.player_id === player.id
-          );
+          const playerStocksList =
+            playerStocks?.filter((ps) => ps.player_id === player.id) || [];
+
           const totalStockValue = playerStocksList.reduce(
             (sum, ps) => sum + ps.quantity * ps.stock.current_price,
             0
           );
-          const order = orders.find((o) => o.player_id === player.id);
+
+          const order = orders?.find((o) => o.player_id === player.id);
 
           return {
             player,
             stocks: playerStocksList,
             totalStockValue,
             totalWorth: player.cash + totalStockValue,
-            orderStatus: order ? "submitted" : null,
+            orderStatus: order ? ("submitted" as const) : null,
           };
         });
 
         // Transform stocks data
         const stocksWithHolders = stocksData.map((stock) => {
-          const holders = playerStocks
-            .filter((ps) => ps.stock_id === stock.id && ps.quantity > 0)
-            .map((ps) => ({
-              playerId: ps.player_id,
-              playerName:
-                playersResult.data.find((p) => p.id === ps.player_id)?.name ||
-                "",
-            }));
+          const holders =
+            playerStocks
+              ?.filter((ps) => ps.stock_id === stock.id && ps.quantity > 0)
+              .map((ps) => ({
+                playerId: ps.player_id,
+                playerName:
+                  playersResult.data.find((p) => p.id === ps.player_id)?.name ||
+                  "",
+              })) || [];
 
           return {
             ...stock,
@@ -113,9 +122,9 @@ export function useRoom(roomId: string) {
           };
         });
 
-        setPlayersWithPortfolio(portfolios as PlayerWithPortfolio[]);
+        setPlayersWithPortfolio(portfolios);
         setStocks(stocksWithHolders);
-        setCurrentEvent(eventData);
+        setCurrentEvent(eventData || null);
       }
     } catch (error) {
       console.error("Error fetching room data:", error);
@@ -127,6 +136,7 @@ export function useRoom(roomId: string) {
   useEffect(() => {
     fetchRoomAndPlayers();
 
+    // Subscribe to room changes
     const roomSubscription = supabase
       .channel(`room-${roomId}`)
       .on(
@@ -137,10 +147,14 @@ export function useRoom(roomId: string) {
           table: "rooms",
           filter: `id=eq.${roomId}`,
         },
-        (payload) => setRoom(payload.new as Room)
+        (payload) => {
+          setRoom(payload.new as Room);
+          fetchRoomAndPlayers(); // Refetch all data when room updates
+        }
       )
       .subscribe();
 
+    // Subscribe to player changes
     const playersSubscription = supabase
       .channel(`room-${roomId}-players`)
       .on(
@@ -155,9 +169,25 @@ export function useRoom(roomId: string) {
       )
       .subscribe();
 
+    // Subscribe to stock changes
+    const stocksSubscription = supabase
+      .channel(`room-${roomId}-stocks`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "stocks",
+          filter: `room_id=eq.${roomId}`,
+        },
+        fetchRoomAndPlayers
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(roomSubscription);
       supabase.removeChannel(playersSubscription);
+      supabase.removeChannel(stocksSubscription);
     };
   }, [roomId, fetchRoomAndPlayers]);
 

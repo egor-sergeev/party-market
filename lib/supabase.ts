@@ -64,10 +64,12 @@ export type Order = {
   player_id: string;
   stock_id: string;
   type: OrderType;
-  quantity: number;
+  requested_quantity: number;
+  requested_price_total: number;
+  execution_quantity: number | null;
+  execution_price_total: number | null;
   submitted_at: string;
   status: OrderStatus;
-  execution_price: number | null;
   created_at: string;
 };
 
