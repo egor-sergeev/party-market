@@ -1,6 +1,6 @@
 "use client";
 
-import { ControlPanel } from "@/components/control-panel/ControlPanel";
+import { ControlPanel } from "@/components/lobby/ControlPanel";
 import { Button } from "@/components/ui/button";
 import { INITIAL_PLAYER_CASH } from "@/lib/game-config";
 import { initializeGame } from "@/lib/game-engine/initialization";
@@ -71,7 +71,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     try {
       await initializeGame(params.id);
     } catch (error) {
-      console.error("Error starting game:", error);
+      console.error("Error starting player:", error);
     } finally {
       setIsStarting(false);
     }

@@ -43,6 +43,6 @@ export default function GamePage({ params }: { params: { id: string } }) {
     );
   }
 
-  // TODO: Implement actual game UI when status is "IN_PROGRESS"
+  // TODO: Implement actual player UI when status is "IN_PROGRESS"
   return <div className="p-8">Game is in progress...</div>;
 }

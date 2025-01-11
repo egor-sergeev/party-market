@@ -47,7 +47,7 @@ export async function calculatePlayerState(
 
 export async function getGameState(roomId: string): Promise<GameState | null> {
   try {
-    // Get all players in the room
+    // Get all players in the lobby
     const { data: players, error: playersError } = await supabase
       .from("players")
       .select("id")
@@ -63,7 +63,7 @@ export async function getGameState(roomId: string): Promise<GameState | null> {
 
     if (stocksError) throw stocksError;
 
-    // Get room data
+    // Get lobby data
     const { data: room, error: roomError } = await supabase
       .from("rooms")
       .select()
@@ -94,7 +94,7 @@ export async function getGameState(roomId: string): Promise<GameState | null> {
       maxWorth: Math.max(...worths),
     };
   } catch (error) {
-    console.error("Error getting game state:", error);
+    console.error("Error getting player state:", error);
     return null;
   }
 }

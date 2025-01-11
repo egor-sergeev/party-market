@@ -1,4 +1,4 @@
-import JoinGameForm from "@/components/game/JoinGameForm";
+import JoinGameForm from "@/components/player/JoinGameForm";
 
 export default function JoinGame() {
   return (

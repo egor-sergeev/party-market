@@ -13,7 +13,7 @@ export async function initializeGame(roomId: string) {
       throw new Error(`Failed to generate first event: ${eventResult.error}`);
     }
 
-    // Update room status
+    // Update lobby status
     const { error } = await supabase
       .from("rooms")
       .update({
@@ -26,7 +26,7 @@ export async function initializeGame(roomId: string) {
 
     if (error) throw error;
   } catch (error) {
-    console.error("Error initializing game:", error);
+    console.error("Error initializing player:", error);
     throw error;
   }
 }

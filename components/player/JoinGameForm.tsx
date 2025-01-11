@@ -20,7 +20,7 @@ export default function JoinGameForm() {
     setIsLoading(true);
 
     try {
-      // Check if room exists and is in waiting state
+      // Check if lobby exists and is in waiting state
       const { data: room, error: roomError } = await supabase
         .from("rooms")
         .select()
@@ -35,7 +35,7 @@ export default function JoinGameForm() {
         throw new Error("Game has already started");
       }
 
-      // Check if name is already taken in this room
+      // Check if name is already taken in this lobby
       const { data: existingPlayer, error: playerError } = await supabase
         .from("players")
         .select()
@@ -44,7 +44,7 @@ export default function JoinGameForm() {
         .single();
 
       if (existingPlayer) {
-        throw new Error("Name already taken in this game");
+        throw new Error("Name already taken in this player");
       }
 
       // Create player
@@ -63,10 +63,10 @@ export default function JoinGameForm() {
       // Store player name in localStorage
       localStorage.setItem(`game-${room.id}-player-name`, name);
 
-      // Redirect to game
+      // Redirect to player
       router.push(`/game/${room.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to join game");
+      setError(err instanceof Error ? err.message : "Failed to join player");
     } finally {
       setIsLoading(false);
     }

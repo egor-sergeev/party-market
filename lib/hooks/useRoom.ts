@@ -3,7 +3,7 @@
 import {
   type PlayerWithPortfolio,
   type StockWithHolders,
-} from "@/components/control-panel/types";
+} from "@/components/lobby/types";
 import {
   supabase,
   type Event,
@@ -38,7 +38,7 @@ const initialState: RoomState = {
 export function useRoom(roomId: string) {
   const [state, setState] = useState<RoomState>(initialState);
 
-  // Fetch basic room data
+  // Fetch basic lobby data
   const fetchRoomData = async () => {
     const { data, error } = await supabase
       .from("rooms")
@@ -50,7 +50,7 @@ export function useRoom(roomId: string) {
     return data;
   };
 
-  // Fetch players in the room
+  // Fetch players in the lobby
   const fetchPlayers = async () => {
     const { data, error } = await supabase
       .from("players")
@@ -62,7 +62,7 @@ export function useRoom(roomId: string) {
     return data;
   };
 
-  // Fetch stocks in the room
+  // Fetch stocks in the lobby
   const fetchStocks = async () => {
     const { data, error } = await supabase
       .from("stocks")
@@ -160,7 +160,7 @@ export function useRoom(roomId: string) {
   // Main fetch function
   const fetchAllData = useCallback(async () => {
     try {
-      // Fetch basic room data and players first
+      // Fetch basic lobby data and players first
       const [room, players] = await Promise.all([
         fetchRoomData(),
         fetchPlayers(),
@@ -174,7 +174,7 @@ export function useRoom(roomId: string) {
         loading: room.status === "IN_PROGRESS",
       }));
 
-      // If game is in progress, fetch additional data
+      // If player is in progress, fetch additional data
       if (room.status === "IN_PROGRESS") {
         const [stocks, playerStocks, currentEvent, orders] = await Promise.all([
           fetchStocks(),
@@ -195,7 +195,7 @@ export function useRoom(roomId: string) {
           players
         );
 
-        // Update state with game data
+        // Update state with player data
         setState((prev) => ({
           ...prev,
           playersWithPortfolio,
@@ -205,7 +205,7 @@ export function useRoom(roomId: string) {
         }));
       }
     } catch (error) {
-      console.error("Error fetching room data:", error);
+      console.error("Error fetching lobby data:", error);
       setState((prev) => ({ ...prev, loading: false }));
     }
   }, [roomId]);

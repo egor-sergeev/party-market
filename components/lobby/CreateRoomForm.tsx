@@ -16,7 +16,7 @@ export default function CreateRoomForm() {
       setError(null);
 
       const code = generateRoomCode();
-      console.log("Creating new room with code:", code);
+      console.log("Creating new lobby with code:", code);
 
       const { data, error } = await supabase
         .from("rooms")
@@ -32,11 +32,11 @@ export default function CreateRoomForm() {
       }
 
       console.log("Room created:", data);
-      router.push(`/control-panel/room/${data.id}`);
+      router.push(`/lobby/${data.id}`);
     } catch (error) {
-      console.error("Error creating room:", error);
+      console.error("Error creating lobby:", error);
       setError(
-        error instanceof Error ? error.message : "Failed to create room"
+        error instanceof Error ? error.message : "Failed to create lobby"
       );
     } finally {
       setIsLoading(false);

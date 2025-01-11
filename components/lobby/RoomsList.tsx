@@ -12,7 +12,7 @@ export default function RoomsList() {
   useEffect(() => {
     fetchRooms();
 
-    // Subscribe to room changes
+    // Subscribe to lobby changes
     const roomsSubscription = supabase
       .channel("rooms")
       .on(
@@ -63,7 +63,7 @@ export default function RoomsList() {
                     ` (Round ${room.current_round})`}
                 </div>
               </div>
-              <Link href={`/control-panel/room/${room.id}`}>
+              <Link href={`/lobby/${room.id}`}>
                 <Button variant="outline" size="sm">
                   Manage
                 </Button>

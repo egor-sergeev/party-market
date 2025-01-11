@@ -49,7 +49,7 @@ export async function generateEvent(
   isFirstEvent: boolean = false
 ): Promise<EventGenerationResult> {
   try {
-    // Get game state to access stocks for ID mapping
+    // Get player state to access stocks for ID mapping
     const { data: stocks, error: stocksError } = await supabase
       .from("stocks")
       .select("id, name")
