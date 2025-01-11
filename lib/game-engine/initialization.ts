@@ -20,7 +20,6 @@ export async function initializeGame(roomId: string) {
         status: "IN_PROGRESS",
         current_round: 1,
         current_phase: "submitting_orders",
-        round_end_time: new Date(Date.now() + 2 * 60 * 1000).toISOString(), // 2 minutes for orders
       })
       .eq("id", roomId);
 
