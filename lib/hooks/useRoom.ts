@@ -4,200 +4,273 @@ import {
   type PlayerWithPortfolio,
   type StockWithHolders,
 } from "@/components/control-panel/types";
-import { supabase, type Event, type Player, type Room } from "@/lib/supabase";
+import {
+  supabase,
+  type Event,
+  type Order,
+  type Player,
+  type PlayerStock,
+  type Room,
+  type Stock,
+} from "@/lib/supabase";
 import { useCallback, useEffect, useState } from "react";
 
-export function useRoom(roomId: string) {
-  const [room, setRoom] = useState<Room | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [playersWithPortfolio, setPlayersWithPortfolio] = useState<
-    PlayerWithPortfolio[]
-  >([]);
-  const [stocks, setStocks] = useState<StockWithHolders[]>([]);
-  const [currentEvent, setCurrentEvent] = useState<Event | null>(null);
-  const [loading, setLoading] = useState(true);
+// Types for internal hook state
+interface RoomState {
+  room: Room | null;
+  players: Player[];
+  playersWithPortfolio: PlayerWithPortfolio[];
+  stocks: StockWithHolders[];
+  currentEvent: Event | null;
+  loading: boolean;
+}
 
-  const fetchRoomAndPlayers = useCallback(async () => {
+// Initial state
+const initialState: RoomState = {
+  room: null,
+  players: [],
+  playersWithPortfolio: [],
+  stocks: [],
+  currentEvent: null,
+  loading: true,
+};
+
+export function useRoom(roomId: string) {
+  const [state, setState] = useState<RoomState>(initialState);
+
+  // Fetch basic room data
+  const fetchRoomData = async () => {
+    const { data, error } = await supabase
+      .from("rooms")
+      .select()
+      .eq("id", roomId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  };
+
+  // Fetch players in the room
+  const fetchPlayers = async () => {
+    const { data, error } = await supabase
+      .from("players")
+      .select()
+      .eq("room_id", roomId)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+    return data;
+  };
+
+  // Fetch stocks in the room
+  const fetchStocks = async () => {
+    const { data, error } = await supabase
+      .from("stocks")
+      .select()
+      .eq("room_id", roomId);
+
+    if (error) throw error;
+    return data;
+  };
+
+  // Fetch player stocks with related stock data
+  const fetchPlayerStocks = async (playerIds: string[]) => {
+    const { data, error } = await supabase
+      .from("player_stocks")
+      .select(`*, stock:stocks(*)`)
+      .in("player_id", playerIds);
+
+    if (error) throw error;
+    return data as (PlayerStock & { stock: Stock })[];
+  };
+
+  // Fetch current event
+  const fetchCurrentEvent = async (currentRound: number) => {
+    const { data, error } = await supabase
+      .from("events")
+      .select()
+      .eq("room_id", roomId)
+      .eq("round", currentRound)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  };
+
+  // Fetch pending orders
+  const fetchPendingOrders = async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select()
+      .eq("room_id", roomId)
+      .eq("status", "pending");
+
+    if (error) throw error;
+    return data;
+  };
+
+  // Transform data into player portfolios
+  const createPlayerPortfolios = (
+    players: Player[],
+    playerStocks: (PlayerStock & { stock: Stock })[],
+    orders: Order[]
+  ): PlayerWithPortfolio[] => {
+    return players.map((player) => {
+      const playerStocksList = playerStocks.filter(
+        (ps) => ps.player_id === player.id
+      );
+
+      const totalStockValue = playerStocksList.reduce(
+        (sum, ps) => sum + ps.quantity * ps.stock.current_price,
+        0
+      );
+
+      const order = orders.find((o) => o.player_id === player.id);
+
+      return {
+        player,
+        stocks: playerStocksList,
+        totalStockValue,
+        totalWorth: player.cash + totalStockValue,
+        orderStatus: order ? ("submitted" as const) : null,
+      };
+    });
+  };
+
+  // Transform data into stocks with holders
+  const createStocksWithHolders = (
+    stocks: Stock[],
+    playerStocks: (PlayerStock & { stock: Stock })[],
+    players: Player[]
+  ): StockWithHolders[] => {
+    return stocks.map((stock) => {
+      const holders = playerStocks
+        .filter((ps) => ps.stock_id === stock.id && ps.quantity > 0)
+        .map((ps) => ({
+          playerId: ps.player_id,
+          playerName: players.find((p) => p.id === ps.player_id)?.name || "",
+        }));
+
+      return { ...stock, holders };
+    });
+  };
+
+  // Main fetch function
+  const fetchAllData = useCallback(async () => {
     try {
-      // Get room and players
-      const [roomResult, playersResult] = await Promise.all([
-        supabase.from("rooms").select().eq("id", roomId).single(),
-        supabase
-          .from("players")
-          .select()
-          .eq("room_id", roomId)
-          .order("created_at", { ascending: true }),
+      // Fetch basic room data and players first
+      const [room, players] = await Promise.all([
+        fetchRoomData(),
+        fetchPlayers(),
       ]);
 
-      if (roomResult.error) throw roomResult.error;
-      if (playersResult.error) throw playersResult.error;
-
-      setRoom(roomResult.data);
-      setPlayers(playersResult.data);
+      // Update state with initial data
+      setState((prev) => ({
+        ...prev,
+        room,
+        players,
+        loading: room.status === "IN_PROGRESS",
+      }));
 
       // If game is in progress, fetch additional data
-      if (roomResult.data.status === "IN_PROGRESS") {
-        // Fetch stocks
-        const { data: stocksData, error: stocksError } = await supabase
-          .from("stocks")
-          .select()
-          .eq("room_id", roomId);
+      if (room.status === "IN_PROGRESS") {
+        const [stocks, playerStocks, currentEvent, orders] = await Promise.all([
+          fetchStocks(),
+          fetchPlayerStocks(players.map((p) => p.id)),
+          fetchCurrentEvent(room.current_round),
+          fetchPendingOrders(),
+        ]);
 
-        if (stocksError) throw stocksError;
+        // Transform data
+        const playersWithPortfolio = createPlayerPortfolios(
+          players,
+          playerStocks,
+          orders
+        );
+        const stocksWithHolders = createStocksWithHolders(
+          stocks,
+          playerStocks,
+          players
+        );
 
-        // Fetch player stocks with stock details
-        const { data: playerStocks, error: playerStocksError } = await supabase
-          .from("player_stocks")
-          .select(
-            `
-            *,
-            stock:stocks (*)
-          `
-          )
-          .in(
-            "player_id",
-            playersResult.data.map((p) => p.id)
-          );
-
-        if (playerStocksError) throw playerStocksError;
-
-        // Fetch current event
-        const { data: eventData, error: eventError } = await supabase
-          .from("events")
-          .select()
-          .eq("room_id", roomId)
-          .eq("round", roomResult.data.current_round)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        // Ignore if no event found
-        if (eventError && eventError.code !== "PGRST116") throw eventError;
-
-        // Fetch orders for current round
-        const { data: orders, error: ordersError } = await supabase
-          .from("orders")
-          .select()
-          .eq("room_id", roomId)
-          .eq("status", "pending");
-
-        if (ordersError) throw ordersError;
-
-        // Transform player data
-        const portfolios = playersResult.data.map((player) => {
-          const playerStocksList =
-            playerStocks?.filter((ps) => ps.player_id === player.id) || [];
-
-          const totalStockValue = playerStocksList.reduce(
-            (sum, ps) => sum + ps.quantity * ps.stock.current_price,
-            0
-          );
-
-          const order = orders?.find((o) => o.player_id === player.id);
-
-          return {
-            player,
-            stocks: playerStocksList,
-            totalStockValue,
-            totalWorth: player.cash + totalStockValue,
-            orderStatus: order ? ("submitted" as const) : null,
-          };
-        });
-
-        // Transform stocks data
-        const stocksWithHolders = stocksData.map((stock) => {
-          const holders =
-            playerStocks
-              ?.filter((ps) => ps.stock_id === stock.id && ps.quantity > 0)
-              .map((ps) => ({
-                playerId: ps.player_id,
-                playerName:
-                  playersResult.data.find((p) => p.id === ps.player_id)?.name ||
-                  "",
-              })) || [];
-
-          return {
-            ...stock,
-            holders,
-          };
-        });
-
-        setPlayersWithPortfolio(portfolios);
-        setStocks(stocksWithHolders);
-        setCurrentEvent(eventData || null);
+        // Update state with game data
+        setState((prev) => ({
+          ...prev,
+          playersWithPortfolio,
+          stocks: stocksWithHolders,
+          currentEvent,
+          loading: false,
+        }));
       }
     } catch (error) {
       console.error("Error fetching room data:", error);
-    } finally {
-      setLoading(false);
+      setState((prev) => ({ ...prev, loading: false }));
     }
   }, [roomId]);
 
   useEffect(() => {
-    fetchRoomAndPlayers();
+    fetchAllData();
 
-    // Subscribe to room changes
-    const roomSubscription = supabase
-      .channel(`room-${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        (payload) => {
-          setRoom(payload.new as Room);
-          fetchRoomAndPlayers(); // Refetch all data when room updates
-        }
-      )
-      .subscribe();
+    // Set up subscriptions
+    const subscriptions = [
+      // Room changes
+      supabase
+        .channel(`room-${roomId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "rooms",
+            filter: `id=eq.${roomId}`,
+          },
+          fetchAllData
+        )
+        .subscribe(),
 
-    // Subscribe to player changes
-    const playersSubscription = supabase
-      .channel(`room-${roomId}-players`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "players",
-          filter: `room_id=eq.${roomId}`,
-        },
-        fetchRoomAndPlayers
-      )
-      .subscribe();
+      // Player changes
+      supabase
+        .channel(`room-${roomId}-players`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "players",
+            filter: `room_id=eq.${roomId}`,
+          },
+          fetchAllData
+        )
+        .subscribe(),
 
-    // Subscribe to stock changes
-    const stocksSubscription = supabase
-      .channel(`room-${roomId}-stocks`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stocks",
-          filter: `room_id=eq.${roomId}`,
-        },
-        fetchRoomAndPlayers
-      )
-      .subscribe();
+      // Stock changes
+      supabase
+        .channel(`room-${roomId}-stocks`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "stocks",
+            filter: `room_id=eq.${roomId}`,
+          },
+          fetchAllData
+        )
+        .subscribe(),
+    ];
 
+    // Cleanup subscriptions
     return () => {
-      supabase.removeChannel(roomSubscription);
-      supabase.removeChannel(playersSubscription);
-      supabase.removeChannel(stocksSubscription);
+      subscriptions.forEach((subscription) => {
+        supabase.removeChannel(subscription);
+      });
     };
-  }, [roomId, fetchRoomAndPlayers]);
+  }, [roomId, fetchAllData]);
 
   return {
-    room,
-    players,
-    playersWithPortfolio,
-    stocks,
-    currentEvent,
-    loading,
-    refetch: fetchRoomAndPlayers,
+    ...state,
+    refetch: fetchAllData,
   };
 }

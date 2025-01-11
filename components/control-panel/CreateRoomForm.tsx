@@ -22,9 +22,6 @@ export default function CreateRoomForm() {
         .from("rooms")
         .insert({
           code,
-          status: "WAITING",
-          current_round: 0,
-          current_phase: "submitting_orders",
         })
         .select()
         .single();
