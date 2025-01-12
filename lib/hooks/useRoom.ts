@@ -269,6 +269,36 @@ export function useRoom(roomId: string) {
     };
   }, [roomId, fetchAllData]);
 
+  useEffect(() => {
+    const roomSubscription = supabase
+      .channel("room-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "rooms",
+          filter: `id=eq.${roomId}`,
+        },
+        fetchAllData
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `room_id=eq.${roomId}`,
+        },
+        fetchAllData
+      )
+      .subscribe();
+
+    return () => {
+      roomSubscription.unsubscribe();
+    };
+  }, [roomId, fetchAllData]);
+
   return {
     ...state,
     refetch: fetchAllData,

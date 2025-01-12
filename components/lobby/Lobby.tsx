@@ -2,13 +2,13 @@
 
 import { type Event } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { EventPanel } from "./EventPanel";
-import { LeaderboardPanel } from "./LeaderboardPanel";
+import { Events } from "./Events";
 import { PhaseControl } from "./PhaseControl";
+import { PlayerList } from "./PlayerList";
 import { StocksTable } from "./StocksTable";
 import { type PlayerWithPortfolio, type StockWithHolders } from "./types";
 
-export function ControlPanel({
+export function Lobby({
   players,
   stocks,
   event,
@@ -32,14 +32,14 @@ export function ControlPanel({
   return (
     <div className={cn("space-y-4", className)}>
       <div className="grid grid-cols-2 gap-4">
-        <LeaderboardPanel
+        <PlayerList
           players={players}
           gameStarted={true}
           className="col-span-1"
         />
         <StocksTable stocks={stocks} className="col-span-1" />
       </div>
-      {event && <EventPanel event={event} round={round} />}
+      {event && <Events event={event} round={round} />}
       <PhaseControl currentPhase={phase} onProceed={onProceedPhase} />
     </div>
   );

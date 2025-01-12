@@ -3,7 +3,7 @@
 import { type Event } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
-export function EventPanel({
+export function Events({
   event,
   round,
   className,

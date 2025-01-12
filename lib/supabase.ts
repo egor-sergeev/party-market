@@ -41,6 +41,7 @@ export type Stock = {
   id: string;
   room_id: string;
   name: string;
+  symbol: string;
   current_price: number;
   dividend_yield: number;
   created_at: string;
@@ -50,6 +51,7 @@ export type PlayerStock = {
   id: string;
   player_id: string;
   stock_id: string;
+  room_id: string;
   quantity: number;
   created_at: string;
   updated_at: string;

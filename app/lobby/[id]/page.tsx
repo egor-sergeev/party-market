@@ -1,37 +1,73 @@
 "use client";
 
-import { ControlPanel } from "@/components/lobby/ControlPanel";
+import { Events } from "@/components/lobby/Events";
+import { PlayerList } from "@/components/lobby/PlayerList";
+import { StocksTable } from "@/components/lobby/StocksTable";
+import { OrderHistory } from "@/components/player/OrderHistory";
 import { Button } from "@/components/ui/button";
 import { INITIAL_PLAYER_CASH } from "@/lib/game-config";
 import { initializeGame } from "@/lib/game-engine/initialization";
+import { executeAllOrders } from "@/lib/game-engine/order-execution";
 import { useRoom } from "@/lib/hooks/useRoom";
 import { supabase } from "@/lib/supabase";
-import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
-export default function RoomPage({ params }: { params: { id: string } }) {
+export default function LobbyPage({ params }: { params: { id: string } }) {
   const { room, players, playersWithPortfolio, stocks, currentEvent, loading } =
     useRoom(params.id);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAddingTestPlayers, setIsAddingTestPlayers] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (room?.current_phase !== "executing_orders") return;
+
+      try {
+        setIsLoadingOrders(true);
+        const { data } = await supabase
+          .from("orders")
+          .select("*")
+          .in("status", ["executed", "failed"])
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        setOrders(data || []);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
+    fetchOrders();
+  }, [room?.current_phase]);
 
   const handleProceedPhase = async () => {
     if (!room) return;
     setIsProcessing(true);
     try {
-      // For now, just update the phase
-      const { error } = await supabase
+      const nextPhase = getNextPhase(room.current_phase);
+
+      // If moving to executing orders, execute all pending orders first
+      if (nextPhase === "executing_orders") {
+        await executeAllOrders(params.id);
+      }
+
+      // Update the phase
+      await supabase
         .from("rooms")
         .update({
-          current_phase: getNextPhase(room.current_phase),
+          current_phase: nextPhase,
           // If moving to next round, increment it
           ...(room.current_phase === "paying_dividends" && {
             current_round: room.current_round + 1,
           }),
         })
         .eq("id", params.id);
-
-      if (error) throw error;
     } catch (error) {
       console.error("Error proceeding to next phase:", error);
     } finally {
@@ -49,15 +85,13 @@ export default function RoomPage({ params }: { params: { id: string } }) {
         { name: "Bob Test", cash: INITIAL_PLAYER_CASH },
       ];
 
-      const { error } = await supabase.from("players").insert(
+      await supabase.from("players").insert(
         testPlayers.map((player) => ({
           room_id: params.id,
           name: player.name,
           cash: player.cash,
         }))
       );
-
-      if (error) throw error;
     } catch (error) {
       console.error("Error adding test players:", error);
     } finally {
@@ -71,7 +105,7 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     try {
       await initializeGame(params.id);
     } catch (error) {
-      console.error("Error starting player:", error);
+      console.error("Error starting game:", error);
     } finally {
       setIsStarting(false);
     }
@@ -101,10 +135,10 @@ export default function RoomPage({ params }: { params: { id: string } }) {
     );
   }
 
-  return (
-    <main className="container mx-auto p-8">
-      <div className="max-w-6xl mx-auto">
-        {room.status === "WAITING" ? (
+  if (room.status === "WAITING") {
+    return (
+      <main className="container mx-auto p-8">
+        <div className="max-w-6xl mx-auto">
           <div className="bg-white rounded-lg shadow-sm p-8">
             <div className="flex justify-between items-start mb-8">
               <div>
@@ -158,19 +192,91 @@ export default function RoomPage({ params }: { params: { id: string } }) {
               </div>
             </div>
           </div>
-        ) : (
-          <ControlPanel
-            players={playersWithPortfolio}
-            stocks={stocks}
-            event={currentEvent}
-            round={room.current_round}
-            phase={room.current_phase}
-            onProceedPhase={handleProceedPhase}
-          />
-        )}
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="container mx-auto p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className={cn("space-y-4")}>
+          <div className="grid grid-cols-2 gap-4">
+            <PlayerList
+              players={playersWithPortfolio}
+              gameStarted={true}
+              className="col-span-1"
+            />
+            <StocksTable stocks={stocks} className="col-span-1" />
+          </div>
+          {currentEvent && (
+            <Events event={currentEvent} round={room.current_round} />
+          )}
+
+          {room.current_phase === "executing_orders" && (
+            <div className="bg-white rounded-lg shadow p-4">
+              {isLoadingOrders ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-24 bg-gray-100 rounded-lg"
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <OrderHistory
+                  orders={orders.map((order) => ({
+                    id: order.id,
+                    player_name:
+                      players.find((p) => p.id === order.player_id)?.name || "",
+                    player_initials: (
+                      players.find((p) => p.id === order.player_id)?.name || ""
+                    )
+                      .split(" ")
+                      .map((n: string) => n[0])
+                      .join("")
+                      .toUpperCase(),
+                    stock_name:
+                      stocks.find((s) => s.id === order.stock_id)?.name || "",
+                    stock_symbol:
+                      stocks.find((s) => s.id === order.stock_id)?.symbol || "",
+                    executed_quantity: order.execution_quantity || 0,
+                    executed_price_total: order.execution_price_total || 0,
+                    requested_quantity: order.requested_quantity,
+                    requested_price_total: order.requested_price_total,
+                    type: order.type,
+                    created_at: order.created_at,
+                  }))}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500">
+              Round {room.current_round} • {formatPhase(room.current_phase)}
+            </div>
+            <Button onClick={handleProceedPhase} disabled={isProcessing}>
+              {isProcessing
+                ? "Processing..."
+                : `Proceed to ${formatPhase(getNextPhase(room.current_phase))}`}
+            </Button>
+          </div>
+        </div>
       </div>
     </main>
   );
+}
+
+function formatPhase(phase: string) {
+  return phase
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 function getNextPhase(

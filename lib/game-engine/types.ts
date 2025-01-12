@@ -8,6 +8,7 @@ import {
 export type StockTemplate = {
   id: string;
   name: string;
+  symbol: string;
   min_price: number;
   max_price: number;
   min_yield: number;

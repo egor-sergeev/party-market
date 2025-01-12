@@ -1,6 +1,7 @@
 "use client";
 
 import { GameResult } from "@/components/player/GameResult";
+import { OrderHistory } from "@/components/player/OrderHistory";
 import { PlayerInfo } from "@/components/player/PlayerInfo";
 import { StockList } from "@/components/player/StockList";
 import { usePlayer } from "@/lib/hooks/usePlayer";
@@ -20,6 +21,9 @@ export default function GamePage({ params }: { params: { id: string } }) {
     pendingOrders,
     cancelOrder,
     projectedCash,
+    orders,
+    players,
+    stocks,
   } = usePlayerGame(params.id, player?.id ?? "");
 
   // Show loading state
@@ -103,18 +107,51 @@ export default function GamePage({ params }: { params: { id: string } }) {
         hasPendingOrder={pendingOrders.length > 0}
       />
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-8">
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-lg font-medium mb-4">Your Portfolio</h2>
-            <StockList
-              allStocksWithQuantity={allStocksWithQuantity}
-              playerCash={player.cash}
-              pendingOrders={pendingOrders}
-              onSubmitOrder={submitOrder}
-              onCancelOrder={cancelOrder}
-            />
+      <div className="max-w-5xl mx-auto p-4 sm:p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-medium mb-4">Your Portfolio</h2>
+                <StockList
+                  allStocksWithQuantity={allStocksWithQuantity}
+                  playerCash={player.cash}
+                  pendingOrders={pendingOrders}
+                  onSubmitOrder={submitOrder}
+                  onCancelOrder={cancelOrder}
+                />
+              </div>
+            </div>
           </div>
+
+          {room.current_phase === "executing_orders" && (
+            <div className="lg:col-span-1">
+              <OrderHistory
+                orders={orders.map((order) => ({
+                  id: order.id,
+                  player_name:
+                    players.find((p) => p.id === order.player_id)?.name || "",
+                  player_initials: (
+                    players.find((p) => p.id === order.player_id)?.name || ""
+                  )
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase(),
+                  stock_name:
+                    stocks.find((s) => s.id === order.stock_id)?.name || "",
+                  stock_symbol:
+                    stocks.find((s) => s.id === order.stock_id)?.symbol || "",
+                  executed_quantity: order.execution_quantity || 0,
+                  executed_price_total: order.execution_price_total || 0,
+                  requested_quantity: order.requested_quantity,
+                  requested_price_total: order.requested_price_total,
+                  type: order.type,
+                  created_at: order.created_at,
+                }))}
+              />
+            </div>
+          )}
         </div>
       </div>
     </main>

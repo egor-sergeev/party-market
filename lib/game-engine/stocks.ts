@@ -45,6 +45,7 @@ export async function initializeStocks(roomId: string) {
       return {
         room_id: roomId,
         name: template.name,
+        symbol: template.symbol,
         current_price: price,
         dividend_yield: yield_value,
       };
