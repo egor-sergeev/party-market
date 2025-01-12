@@ -6,6 +6,7 @@ import { StocksTable } from "@/components/lobby/StocksTable";
 import { OrderHistory } from "@/components/player/OrderHistory";
 import { Button } from "@/components/ui/button";
 import { INITIAL_PLAYER_CASH } from "@/lib/game-config";
+import { distributeDividends } from "@/lib/game-engine/dividends";
 import { initializeGame } from "@/lib/game-engine/initialization";
 import { executeAllOrders } from "@/lib/game-engine/order-execution";
 import { useRoom } from "@/lib/hooks/useRoom";
@@ -52,9 +53,11 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
     try {
       const nextPhase = getNextPhase(room.current_phase);
 
-      // If moving to executing orders, execute all pending orders first
+      // Execute phase-specific actions before entering the phase
       if (nextPhase === "executing_orders") {
         await executeAllOrders(params.id);
+      } else if (nextPhase === "paying_dividends") {
+        await distributeDividends(params.id);
       }
 
       // Update the phase
@@ -63,7 +66,7 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
         .update({
           current_phase: nextPhase,
           // If moving to next round, increment it
-          ...(room.current_phase === "paying_dividends" && {
+          ...(nextPhase === "submitting_orders" && {
             current_round: room.current_round + 1,
           }),
         })

@@ -32,7 +32,7 @@ export function StocksTable({
                 Price
               </th>
               <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">
-                Dividend Yield
+                Dividend
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">
                 Holders
@@ -49,7 +49,7 @@ export function StocksTable({
                   ${stock.current_price.toLocaleString()}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {stock.dividend_yield.toFixed(2)}%
+                  ${stock.dividend_amount.toLocaleString()}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex -space-x-2">

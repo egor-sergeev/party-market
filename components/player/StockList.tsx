@@ -75,8 +75,8 @@ export function StockList({
             <div className="flex-1">
               <div className="font-medium">{stock.name}</div>
               <div className="text-sm text-gray-500">
-                {quantity} shares • {stock.dividend_yield.toFixed(1)}% yield • $
-                {stock.current_price.toLocaleString()} per share
+                {quantity} shares • ${stock.dividend_amount.toLocaleString()}{" "}
+                dividend • ${stock.current_price.toLocaleString()} per share
               </div>
               {pendingOrder && (
                 <div className="text-sm font-medium text-blue-600 mt-1">

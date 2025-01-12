@@ -43,7 +43,7 @@ export type Stock = {
   name: string;
   symbol: string;
   current_price: number;
-  dividend_yield: number;
+  dividend_amount: number;
   created_at: string;
 };
 

@@ -38,16 +38,15 @@ export async function initializeStocks(roomId: string) {
     // Create stocks with randomized values
     const stocks = selectedTemplates.map((template) => {
       const price = getRandomInRange(template.min_price, template.max_price);
-      const yield_value =
-        getRandomInRange(template.min_yield * 100, template.max_yield * 100) /
-        100;
-
       return {
         room_id: roomId,
         name: template.name,
         symbol: template.symbol,
         current_price: price,
-        dividend_yield: yield_value,
+        dividend_amount: getRandomInRange(
+          template.min_dividend,
+          template.max_dividend
+        ),
       };
     });
 

@@ -11,8 +11,8 @@ export type StockTemplate = {
   symbol: string;
   min_price: number;
   max_price: number;
-  min_yield: number;
-  max_yield: number;
+  min_dividend: number;
+  max_dividend: number;
   is_active: boolean;
   created_at: string;
 };
