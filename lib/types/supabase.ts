@@ -1,10 +1,10 @@
 export type RoomPhase =
   | "waiting"
+  | "generating_event"
   | "submitting_orders"
   | "executing_orders"
   | "revealing_event"
-  | "paying_dividends"
-  | "generating_event";
+  | "paying_dividends";
 
 export type RoomStatus = "WAITING" | "IN_PROGRESS" | "FINISHED";
 
@@ -14,6 +14,7 @@ export interface Room {
   status: RoomStatus;
   current_phase: RoomPhase;
   current_round: number;
+  total_rounds: number;
   created_at: string;
 }
 

@@ -25,14 +25,11 @@ app/                    # Next JS pages
 ├── join/               # Page for joining a game
 ├── lobby/              # Game lobby pages and their creation
 components/             # Shared React components
-├── lobby/
-├── player/
 ├── ui/                 # shadcn ui components
 lib/
-├── game-engine/        # Game engine logic
 ├── types/
-    ├── supabase.ts     # Types representing supabase tables
-    └── ...             # Other types for components data
+    ├── supabase.ts     # Types representing supabase tables. Do not change without updating database schema
+    └── ...
 ├── hooks/              # Custom React hooks
 ├── openai.ts           # Methods to generate events using OpenAI
 └── ...
