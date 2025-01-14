@@ -1,0 +1,74 @@
+# [Project Name]
+
+Every time you choose to apply a rule(s), explicitly state the rule(s) in the output. You can abbreviate the rule description to a single word or phrase.
+
+## Project Context
+Web multiplayer party game where players trade stocks to maximize their net worth.
+- Game takes 10 rounds with 5 phases. Player with hiest cash and stocks cost wins.
+    - Players submit buy/sell orders for stocks
+    - Orders are executed in chronological order, each affecting the stock price on execution
+    - Event effects are revealed which affect stock prices or dividends
+    - Dividends are paid out to players depending on their stock holdings
+    - New event summary is shown to players allowing to guess the effects
+- Game lobby initiated on the host device that provides gameplay overview
+- Players can join lobby from their own devices to submit orders and see their cash and portfolio
+
+## Code Style and Structure
+- Write concise, technical TypeScript code with accurate examples
+- Use functional and declarative programming patterns; avoid classes
+- Prefer iteration and modularization over code duplication
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
+- Structure repository files as follows:
+```
+app/                    # Next JS pages
+├── game/               # Player's game pages
+├── join/               # Page for joining a game
+├── lobby/              # Game lobby pages and their creation
+components/             # Shared React components
+├── lobby/
+├── player/
+├── ui/                 # shadcn ui components
+lib/
+├── game-engine/        # Game engine logic
+├── types/
+    ├── supabase.ts     # Types representing supabase tables
+    └── ...             # Other types for components data
+├── hooks/              # Custom React hooks
+├── openai.ts           # Methods to generate events using OpenAI
+└── ...
+```
+
+## Tech Stack
+- Next.js 13
+- React
+- TypeScript
+- Shadcn UI
+- Supabase
+
+## Naming Conventions
+- Use lowercase with dashes for directories (e.g., components/form-wizard)
+- Favor named exports for components and utilities
+- Use PascalCase for component files (e.g., VisaForm.tsx)
+- Use camelCase for utility files (e.g., formValidator.ts)
+
+## TypeScript Usage
+- Use TypeScript for all code; prefer interfaces over types
+- Avoid enums; use const objects with 'as const' assertion
+- Use functional components with TypeScript interfaces
+- Use absolute imports for all files @/...
+- Avoid try/catch blocks unless there's good reason to translate or handle error in that abstraction
+- Use explicit return types for all functions
+
+## UI and Styling
+- Use Shadcn UI and `npx shadcn@latest add <component-name>` to add new shadcn components
+
+## Database
+- Do not make any assumptions about the database structure; always request this information from the user
+- If you need information about the database structure, write plain sql queries code blocks that user will execute in supabase web console
+- When updating database structure, write sql queries code blocks to execute in supabase web console
+
+## Error Handling
+- Implement proper error boundaries
+- Log errors appropriately for debugging
+- Provide user-friendly error messages
+- Handle network failures gracefully
