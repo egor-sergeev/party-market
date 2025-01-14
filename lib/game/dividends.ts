@@ -35,10 +35,10 @@ export async function payDividends(supabase: SupabaseClient, roomId: string) {
 
   await Promise.all(
     Object.entries(playerDividends).map(([playerId, amount]) =>
-      supabase
-        .from("players")
-        .update({ cash: supabase.sql`cash + ${amount}` })
-        .eq("id", playerId)
+      supabase.rpc("update_player_cash", {
+        player_id: playerId,
+        amount,
+      })
     )
   );
 }

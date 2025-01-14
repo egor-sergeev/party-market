@@ -81,10 +81,10 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
 
         // Update cash and holdings
         await Promise.all([
-          supabase
-            .from("players")
-            .update({ cash: supabase.sql`cash - ${executionTotal}` })
-            .eq("id", order.player_id),
+          supabase.rpc("update_player_cash", {
+            player_id: order.player_id,
+            amount: -executionTotal,
+          }),
           existingHolding
             ? supabase
                 .from("player_stocks")
@@ -145,10 +145,10 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
         if (executionQuantity > 0) {
           // Update cash, holdings, and stock price in parallel
           await Promise.all([
-            supabase
-              .from("players")
-              .update({ cash: supabase.sql`cash + ${executionTotal}` })
-              .eq("id", order.player_id),
+            supabase.rpc("update_player_cash", {
+              player_id: order.player_id,
+              amount: executionTotal,
+            }),
             supabase
               .from("player_stocks")
               .update({ quantity: holding.quantity - executionQuantity })

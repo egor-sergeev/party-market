@@ -26,6 +26,7 @@ export async function POST() {
 
     return NextResponse.json(room);
   } catch (error) {
+    console.error("Failed to create room:", error);
     return NextResponse.json(
       { error: "Failed to create room" },
       { status: 500 }
