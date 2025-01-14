@@ -1,57 +1,33 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { getPhaseInfo } from "@/lib/game-engine/phase-manager";
+import { type RoomPhase } from "@/lib/types/game";
 import { cn } from "@/lib/utils";
 
-const PHASE_INFO = {
-  submitting_orders: {
-    next: "executing_orders",
-    label: "Execute Orders",
-    description: "All players must submit their orders",
-  },
-  executing_orders: {
-    next: "revealing_event",
-    label: "Reveal Event",
-    description: "Orders are being executed in sequence",
-  },
-  revealing_event: {
-    next: "paying_dividends",
-    label: "Pay Dividends",
-    description: "Event effects are being applied",
-  },
-  paying_dividends: {
-    next: "submitting_orders",
-    label: "Next Round",
-    description: "Dividends are being paid",
-  },
-} as const;
-
-export function PhaseControl({
-  currentPhase,
-  onProceed,
-  disabled,
-  className,
-}: {
-  currentPhase: keyof typeof PHASE_INFO;
-  onProceed: () => void;
+interface PhaseControlProps {
+  phase: RoomPhase;
+  onProceedPhase: () => void;
   disabled?: boolean;
   className?: string;
-}) {
-  const phase = PHASE_INFO[currentPhase];
+}
+
+export function PhaseControl({
+  phase,
+  onProceedPhase,
+  disabled,
+  className,
+}: PhaseControlProps) {
+  const phaseInfo = getPhaseInfo(phase);
 
   return (
-    <div
-      className={cn(
-        "bg-white rounded-lg shadow-sm p-4 flex items-center justify-between",
-        className
-      )}
-    >
-      <div>
-        <div className="text-sm font-medium text-gray-500">Current Phase</div>
-        <div className="font-medium">{phase.description}</div>
+    <div className={cn("flex items-center justify-between gap-4", className)}>
+      <div className="space-y-1">
+        <div className="text-sm text-muted-foreground">Current Phase</div>
+        <div className="font-medium">{phaseInfo.description}</div>
       </div>
-      <Button onClick={onProceed} disabled={disabled}>
-        Proceed to {phase.label}
+      <Button onClick={onProceedPhase} disabled={disabled}>
+        Proceed to {phaseInfo.label}
       </Button>
     </div>
   );

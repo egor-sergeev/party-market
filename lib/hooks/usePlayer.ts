@@ -1,8 +1,11 @@
 "use client";
 
-import { supabase, type Player } from "@/lib/supabase";
+import { type Player } from "@/lib/types/supabase";
+import { supabase } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+
+const LAST_PLAYER_NAME_KEY = "last-player-name";
 
 export function usePlayer(roomId: string) {
   const [player, setPlayer] = useState<Player | null>(null);
@@ -16,6 +19,8 @@ export function usePlayer(roomId: string) {
         router.push("/join");
         return;
       }
+
+      localStorage.setItem(LAST_PLAYER_NAME_KEY, playerName);
 
       const { data, error } = await supabase
         .from("players")

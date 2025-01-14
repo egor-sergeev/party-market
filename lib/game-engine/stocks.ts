@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
-import type { StockTemplate } from "./types";
+import { type StockTemplate } from "@/lib/types/game";
+import { supabase } from "@/lib/utils";
 
 export async function getActiveStockTemplates(): Promise<StockTemplate[]> {
   const { data, error } = await supabase

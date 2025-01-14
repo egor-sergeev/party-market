@@ -1,11 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { generateRoomCode, supabase } from "@/lib/supabase";
+import { generateRoomCode, supabase } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function CreateRoomForm() {
+export function CreateRoomForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -16,27 +16,24 @@ export default function CreateRoomForm() {
       setError(null);
 
       const code = generateRoomCode();
-      console.log("Creating new lobby with code:", code);
 
       const { data, error } = await supabase
         .from("rooms")
         .insert({
           code,
+          status: "WAITING",
+          current_phase: "waiting",
+          current_round: 0,
         })
         .select()
         .single();
 
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
-
-      console.log("Room created:", data);
+      if (error) throw error;
       router.push(`/lobby/${data.id}`);
     } catch (error) {
-      console.error("Error creating lobby:", error);
+      console.error("Error creating room:", error);
       setError(
-        error instanceof Error ? error.message : "Failed to create lobby"
+        error instanceof Error ? error.message : "Failed to create room"
       );
     } finally {
       setIsLoading(false);

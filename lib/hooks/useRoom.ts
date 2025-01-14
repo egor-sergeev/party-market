@@ -1,18 +1,16 @@
 "use client";
 
 import {
+  type GameOrder,
+  type GameStock,
+  type PlayerStock,
+} from "@/lib/types/game";
+import { type Event, type Player, type Room } from "@/lib/types/supabase";
+import {
   type PlayerWithPortfolio,
   type StockWithHolders,
-} from "@/components/lobby/types";
-import {
-  supabase,
-  type Event,
-  type Order,
-  type Player,
-  type PlayerStock,
-  type Room,
-  type Stock,
-} from "@/lib/supabase";
+} from "@/lib/types/ui";
+import { supabase } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 
 // Types for internal hook state
@@ -81,7 +79,7 @@ export function useRoom(roomId: string) {
       .in("player_id", playerIds);
 
     if (error) throw error;
-    return data as (PlayerStock & { stock: Stock })[];
+    return data as (PlayerStock & { stock: GameStock })[];
   };
 
   // Fetch current event
@@ -91,9 +89,7 @@ export function useRoom(roomId: string) {
       .select()
       .eq("room_id", roomId)
       .eq("round", currentRound)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .single();
 
     if (error) throw error;
     return data;
@@ -114,8 +110,8 @@ export function useRoom(roomId: string) {
   // Transform data into player portfolios
   const createPlayerPortfolios = (
     players: Player[],
-    playerStocks: (PlayerStock & { stock: Stock })[],
-    orders: Order[]
+    playerStocks: (PlayerStock & { stock: GameStock })[],
+    orders: GameOrder[]
   ): PlayerWithPortfolio[] => {
     return players.map((player) => {
       const playerStocksList = playerStocks.filter(
@@ -141,8 +137,8 @@ export function useRoom(roomId: string) {
 
   // Transform data into stocks with holders
   const createStocksWithHolders = (
-    stocks: Stock[],
-    playerStocks: (PlayerStock & { stock: Stock })[],
+    stocks: GameStock[],
+    playerStocks: (PlayerStock & { stock: GameStock })[],
     players: Player[]
   ): StockWithHolders[] => {
     return stocks.map((stock) => {
@@ -254,6 +250,21 @@ export function useRoom(roomId: string) {
             event: "*",
             schema: "public",
             table: "stocks",
+            filter: `room_id=eq.${roomId}`,
+          },
+          fetchAllData
+        )
+        .subscribe(),
+
+      // Event changes
+      supabase
+        .channel(`room-${roomId}-events`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "events",
             filter: `room_id=eq.${roomId}`,
           },
           fetchAllData

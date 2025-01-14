@@ -1,15 +1,6 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { type Player } from "@/lib/supabase";
+import { type PlayerInfoProps } from "@/lib/types/ui";
 import { cn } from "@/lib/utils";
-
-interface PlayerInfoProps {
-  player: Player;
-  cashDiff?: number;
-  projectedCash?: number;
-  gameStatus: "WAITING" | "IN_PROGRESS" | "FINISHED";
-  currentPhase?: string;
-  hasPendingOrder?: boolean;
-}
 
 export function PlayerInfo({
   player,
@@ -21,7 +12,7 @@ export function PlayerInfo({
 }: PlayerInfoProps) {
   const initials = player.name
     .split(" ")
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join("")
     .toUpperCase();
 

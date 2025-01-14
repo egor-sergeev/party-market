@@ -1,7 +1,4 @@
-interface GameResultProps {
-  place: number;
-  totalPlayers: number;
-}
+import { type GameResultProps } from "@/lib/types/ui";
 
 export function GameResult({ place, totalPlayers }: GameResultProps) {
   return (

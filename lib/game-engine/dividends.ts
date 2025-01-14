@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/utils";
 
 export async function distributeDividends(roomId: string) {
   try {

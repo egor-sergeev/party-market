@@ -1,5 +1,5 @@
-import CreateRoomForm from "@/components/lobby/CreateRoomForm";
-import RoomsList from "@/components/lobby/RoomsList";
+import { CreateRoomForm } from "@/components/lobby/CreateRoomForm";
+import { RoomsList } from "@/components/lobby/RoomsList";
 
 export default function ControlPanel() {
   return (

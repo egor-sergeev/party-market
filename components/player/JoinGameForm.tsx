@@ -3,16 +3,25 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { INITIAL_PLAYER_CASH } from "@/lib/game-config";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function JoinGameForm() {
+const LAST_PLAYER_NAME_KEY = "last-player-name";
+
+export function JoinGameForm() {
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    const lastPlayerName = localStorage.getItem(LAST_PLAYER_NAME_KEY);
+    if (lastPlayerName) {
+      setName(lastPlayerName);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +45,7 @@ export default function JoinGameForm() {
       }
 
       // Check if name is already taken in this lobby
-      const { data: existingPlayer, error: playerError } = await supabase
+      const { data: existingPlayer } = await supabase
         .from("players")
         .select()
         .eq("room_id", room.id)
@@ -44,7 +53,7 @@ export default function JoinGameForm() {
         .single();
 
       if (existingPlayer) {
-        throw new Error("Name already taken in this player");
+        throw new Error("Name already taken in this game");
       }
 
       // Create player
@@ -62,11 +71,10 @@ export default function JoinGameForm() {
 
       // Store player name in localStorage
       localStorage.setItem(`game-${room.id}-player-name`, name);
-
-      // Redirect to player
+      localStorage.setItem(LAST_PLAYER_NAME_KEY, name);
       router.push(`/game/${room.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to join player");
+      setError(err instanceof Error ? err.message : "Failed to join game");
     } finally {
       setIsLoading(false);
     }

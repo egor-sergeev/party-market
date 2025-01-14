@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
-import type { GameState, PlayerState } from "./types";
+import { type GameState, type PlayerState } from "@/lib/types/game";
+import { supabase } from "@/lib/utils";
 
 export async function calculatePlayerState(
   playerId: string,
@@ -78,12 +78,13 @@ export async function getGameState(roomId: string): Promise<GameState | null> {
     );
 
     const validPlayerStates = playerStates.filter(
-      (state): state is PlayerState => state !== null
+      (state: PlayerState | null): state is PlayerState => state !== null
     );
 
-    const worths = validPlayerStates.map((p) => p.totalWorth);
+    const worths = validPlayerStates.map((p: PlayerState) => p.totalWorth);
     const averageWorth =
-      worths.reduce((sum, worth) => sum + worth, 0) / worths.length;
+      worths.reduce((sum: number, worth: number) => sum + worth, 0) /
+      worths.length;
 
     return {
       players: validPlayerStates,

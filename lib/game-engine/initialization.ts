@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
-import { generateEvent } from "./events";
+import { supabase } from "@/lib/utils";
+import { generateNewEvent } from "./events";
 import { initializeStocks } from "./stocks";
 
 export async function initializeGame(roomId: string) {
@@ -8,9 +8,9 @@ export async function initializeGame(roomId: string) {
     await initializeStocks(roomId);
 
     // Generate first event
-    const eventResult = await generateEvent(roomId, true);
+    const eventResult = await generateNewEvent(roomId);
     if (!eventResult.success) {
-      throw new Error(`Failed to generate first event: ${eventResult.error}`);
+      throw new Error("Failed to generate first event");
     }
 
     // Update lobby status

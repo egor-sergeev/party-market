@@ -1,19 +1,14 @@
 "use client";
 
-import { type Stock } from "@/lib/supabase";
+import { type StockWithHolders } from "@/lib/types/ui";
 import { cn } from "@/lib/utils";
 
-type StockWithHolders = Stock & {
-  holders: { playerId: string; playerName: string }[];
-};
-
-export function StocksTable({
-  stocks,
-  className,
-}: {
+interface StockTableProps {
   stocks: StockWithHolders[];
   className?: string;
-}) {
+}
+
+export function StocksTable({ stocks, className }: StockTableProps) {
   return (
     <div
       className={cn("bg-white rounded-lg shadow-sm overflow-hidden", className)}

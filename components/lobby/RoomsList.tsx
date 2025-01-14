@@ -1,77 +1,68 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { supabase, type Room } from "@/lib/supabase";
-import Link from "next/link";
+import { type Room } from "@/lib/types/supabase";
+import { supabase } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export default function RoomsList() {
+export function RoomsList() {
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
+    const fetchRooms = async () => {
+      const { data } = await supabase
+        .from("rooms")
+        .select()
+        .eq("status", "WAITING");
+
+      if (data) {
+        setRooms(data);
+      }
+    };
+
     fetchRooms();
 
-    // Subscribe to lobby changes
-    const roomsSubscription = supabase
+    const subscription = supabase
       .channel("rooms")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "rooms" },
+        {
+          event: "*",
+          schema: "public",
+          table: "rooms",
+        },
         fetchRooms
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(roomsSubscription);
+      subscription.unsubscribe();
     };
   }, []);
 
-  const fetchRooms = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setRooms(data);
-    } catch (error) {
-      console.error("Error fetching rooms:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <div>Loading rooms...</div>;
-  }
-
   return (
     <div className="space-y-4">
-      {rooms.length === 0 ? (
-        <div className="text-gray-500">No active games</div>
-      ) : (
-        rooms.map((room) => (
-          <div key={room.id} className="border p-4 rounded-lg">
-            <div className="flex justify-between items-center">
-              <div>
-                <div className="font-medium">Game #{room.id.slice(0, 8)}</div>
-                <div className="text-sm text-gray-500">
-                  Status: {room.status}
-                  {room.status === "IN_PROGRESS" &&
-                    ` (Round ${room.current_round})`}
-                </div>
-              </div>
-              <Link href={`/lobby/${room.id}`}>
-                <Button variant="outline" size="sm">
-                  Manage
-                </Button>
-              </Link>
+      <div className="space-y-2">
+        {rooms.map((room) => (
+          <div
+            key={room.id}
+            className="flex items-center justify-between p-4 bg-white rounded-lg border"
+          >
+            <div>
+              <div className="font-medium">Room {room.code}</div>
+              <div className="text-sm text-gray-500">Waiting for players</div>
             </div>
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/lobby/${room.id}`)}
+            >
+              Join
+            </Button>
           </div>
-        ))
-      )}
+        ))}
+      </div>
     </div>
   );
 }

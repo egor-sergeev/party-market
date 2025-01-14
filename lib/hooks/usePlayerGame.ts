@@ -1,6 +1,12 @@
 "use client";
 
-import { Order, Player, PlayerStock, Stock, supabase } from "@/lib/supabase";
+import {
+  type GameOrder,
+  type GameStock,
+  type PlayerStock,
+} from "@/lib/types/game";
+import { type Player } from "@/lib/types/supabase";
+import { supabase } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 
 interface PlayerGameState {
@@ -9,7 +15,7 @@ interface PlayerGameState {
   player: Player | null;
   playerStocks: PlayerStock[];
   allStocksWithQuantity: Array<{
-    stock: Stock;
+    stock: GameStock;
     quantity: number;
   }>;
   pendingOrders: Array<{
@@ -20,9 +26,9 @@ interface PlayerGameState {
   }>;
   cashDiff: number | null;
   projectedCash: number | null;
-  orders: Order[];
+  orders: GameOrder[];
   players: Player[];
-  stocks: Stock[];
+  stocks: GameStock[];
 }
 
 export function usePlayerGame(roomId: string, playerId: string) {
@@ -90,18 +96,22 @@ export function usePlayerGame(roomId: string, playerId: string) {
 
       // Calculate cash difference from last round
       const lastRoundOrders =
-        executedOrders?.filter((o: Order) => o.player_id === playerId) || [];
-      const cashDiff = lastRoundOrders.reduce((sum: number, order: Order) => {
-        if (order.type === "buy") {
-          return sum - (order.execution_price_total || 0);
-        } else {
-          return sum + (order.execution_price_total || 0);
-        }
-      }, 0);
+        executedOrders?.filter((o: GameOrder) => o.player_id === playerId) ||
+        [];
+      const cashDiff = lastRoundOrders.reduce(
+        (sum: number, order: GameOrder) => {
+          if (order.type === "buy") {
+            return sum - (order.execution_price_total || 0);
+          } else {
+            return sum + (order.execution_price_total || 0);
+          }
+        },
+        0
+      );
 
       // Calculate projected cash based on pending orders
       const projectedCash = pendingOrders.reduce(
-        (cash: number, order: Order) => {
+        (cash: number, order: GameOrder) => {
           if (order.type === "buy") {
             return cash - order.requested_price_total;
           } else {
@@ -121,7 +131,7 @@ export function usePlayerGame(roomId: string, playerId: string) {
           quantity:
             playerStocks.find((ps) => ps.stock_id === stock.id)?.quantity || 0,
         })),
-        pendingOrders: pendingOrders.map((order: Order) => ({
+        pendingOrders: pendingOrders.map((order: GameOrder) => ({
           id: order.id,
           stockId: order.stock_id,
           type: order.type,
@@ -192,7 +202,62 @@ export function usePlayerGame(roomId: string, playerId: string) {
 
   useEffect(() => {
     fetchPlayerData();
-  }, [fetchPlayerData]);
+
+    // Set up subscriptions
+    const subscriptions = [
+      // Stock changes
+      supabase
+        .channel(`room-${roomId}-stocks`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "stocks",
+            filter: `room_id=eq.${roomId}`,
+          },
+          fetchPlayerData
+        )
+        .subscribe(),
+
+      // Player stock changes
+      supabase
+        .channel(`room-${roomId}-player-stocks`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "player_stocks",
+            filter: `room_id=eq.${roomId}`,
+          },
+          fetchPlayerData
+        )
+        .subscribe(),
+
+      // Order changes
+      supabase
+        .channel(`room-${roomId}-orders`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "orders",
+            filter: `room_id=eq.${roomId}`,
+          },
+          fetchPlayerData
+        )
+        .subscribe(),
+    ];
+
+    // Cleanup subscriptions
+    return () => {
+      subscriptions.forEach((subscription) => {
+        supabase.removeChannel(subscription);
+      });
+    };
+  }, [fetchPlayerData, roomId]);
 
   return {
     ...state,

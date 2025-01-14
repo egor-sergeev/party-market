@@ -1,30 +1,63 @@
 "use client";
 
-import { type Event } from "@/lib/supabase";
+import { type GameStock, type StockEffect } from "@/lib/types/game";
+import { type Event } from "@/lib/types/supabase";
 import { cn } from "@/lib/utils";
 
-export function Events({
-  event,
-  round,
-  className,
-}: {
-  event: Event;
-  round: number;
+interface EventsProps {
+  events: Event[];
+  stocks: GameStock[];
   className?: string;
+}
+
+function EventEffect({
+  effect,
+  stocks,
+}: {
+  effect: StockEffect;
+  stocks: GameStock[];
 }) {
+  const stock = stocks.find((s: GameStock) => s.id === effect.stock_id);
+  const isPositive = effect.amount > 0;
+  const sign = isPositive ? "+" : "";
+
   return (
-    <div className={cn("bg-white rounded-lg shadow-sm", className)}>
-      <div className="px-4 py-3 border-b flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Current Event</h2>
-        <div className="text-sm font-medium text-gray-500">Round {round}</div>
-      </div>
-      <div className="p-4 space-y-3">
-        <h3 className="text-xl font-bold">{event.title}</h3>
-        <p className="text-gray-600">{event.description}</p>
-        <div className="text-sm text-gray-500 italic">
-          Effects will be revealed at the end of the round...
+    <div
+      className={cn(
+        "text-sm font-medium",
+        isPositive ? "text-green-600" : "text-red-600"
+      )}
+    >
+      {effect.type === "price_change" ? (
+        <>
+          {stock?.symbol} price {sign}${effect.amount}
+        </>
+      ) : (
+        <>
+          {stock?.symbol} dividend {sign}${effect.amount}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function Events({ events, stocks }: EventsProps) {
+  return (
+    <div className="space-y-4">
+      {events.map((event) => (
+        <div
+          key={event.id}
+          className="p-4 bg-white rounded-lg border space-y-2"
+        >
+          <div className="font-medium">{event.title}</div>
+          <div className="text-sm text-gray-500">{event.description}</div>
+          <div className="space-y-1">
+            {event.effects.map((effect, i) => (
+              <EventEffect key={i} effect={effect} stocks={stocks} />
+            ))}
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }

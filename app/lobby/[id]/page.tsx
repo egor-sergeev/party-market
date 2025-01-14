@@ -1,17 +1,25 @@
 "use client";
 
 import { Events } from "@/components/lobby/Events";
+import { OrderHistory } from "@/components/lobby/OrderHistory";
 import { PlayerList } from "@/components/lobby/PlayerList";
 import { StocksTable } from "@/components/lobby/StocksTable";
-import { OrderHistory } from "@/components/player/OrderHistory";
 import { Button } from "@/components/ui/button";
 import { INITIAL_PLAYER_CASH } from "@/lib/game-config";
-import { distributeDividends } from "@/lib/game-engine/dividends";
 import { initializeGame } from "@/lib/game-engine/initialization";
-import { executeAllOrders } from "@/lib/game-engine/order-execution";
+import {
+  advancePhase,
+  formatPhase,
+  getPhaseInfo,
+} from "@/lib/game-engine/phase-manager";
 import { useRoom } from "@/lib/hooks/useRoom";
-import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import {
+  type GameOrder,
+  type GamePlayer,
+  type GameStock,
+} from "@/lib/types/game";
+import { type OrderWithDetails } from "@/lib/types/ui";
+import { cn, supabase } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export default function LobbyPage({ params }: { params: { id: string } }) {
@@ -20,7 +28,7 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAddingTestPlayers, setIsAddingTestPlayers] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<GameOrder[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
   useEffect(() => {
@@ -51,26 +59,7 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
     if (!room) return;
     setIsProcessing(true);
     try {
-      const nextPhase = getNextPhase(room.current_phase);
-
-      // Execute phase-specific actions before entering the phase
-      if (nextPhase === "executing_orders") {
-        await executeAllOrders(params.id);
-      } else if (nextPhase === "paying_dividends") {
-        await distributeDividends(params.id);
-      }
-
-      // Update the phase
-      await supabase
-        .from("rooms")
-        .update({
-          current_phase: nextPhase,
-          // If moving to next round, increment it
-          ...(nextPhase === "submitting_orders" && {
-            current_round: room.current_round + 1,
-          }),
-        })
-        .eq("id", params.id);
+      await advancePhase(params.id, room.current_phase);
     } catch (error) {
       console.error("Error proceeding to next phase:", error);
     } finally {
@@ -114,6 +103,27 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const mapOrderToDetails = (
+    order: GameOrder,
+    players: GamePlayer[],
+    stocks: GameStock[]
+  ): OrderWithDetails => {
+    const player = players.find((p) => p.id === order.player_id);
+    const stock = stocks.find((s) => s.id === order.stock_id);
+
+    return {
+      ...order,
+      playerName: player?.name || "",
+      playerInitials: (player?.name || "")
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase(),
+      stockName: stock?.name || "",
+      stockSymbol: stock?.symbol || "",
+    };
+  };
+
   if (loading) {
     return (
       <main className="container mx-auto p-8">
@@ -131,7 +141,8 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Room not found</h1>
           <p className="mt-2 text-gray-600">
-            The room you're looking for doesn't exist or has been deleted.
+            The room you&apos;re looking for doesn&apos;t exist or has been
+            deleted.
           </p>
         </div>
       </main>
@@ -205,59 +216,29 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
       <div className="max-w-6xl mx-auto">
         <div className={cn("space-y-4")}>
           <div className="grid grid-cols-2 gap-4">
-            <PlayerList
-              players={playersWithPortfolio}
-              gameStarted={true}
-              className="col-span-1"
-            />
+            <PlayerList players={playersWithPortfolio} className="col-span-1" />
             <StocksTable stocks={stocks} className="col-span-1" />
           </div>
-          {currentEvent && (
-            <Events event={currentEvent} round={room.current_round} />
-          )}
+          {currentEvent && <Events events={[currentEvent]} stocks={stocks} />}
 
-          {room.current_phase === "executing_orders" && (
-            <div className="bg-white rounded-lg shadow p-4">
-              {isLoadingOrders ? (
-                <div className="animate-pulse space-y-4">
-                  <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-                  <div className="space-y-2">
-                    {[...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-24 bg-gray-100 rounded-lg"
-                      ></div>
-                    ))}
-                  </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            {isLoadingOrders ? (
+              <div className="animate-pulse space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+                <div className="space-y-2">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-24 bg-gray-100 rounded-lg"></div>
+                  ))}
                 </div>
-              ) : (
-                <OrderHistory
-                  orders={orders.map((order) => ({
-                    id: order.id,
-                    player_name:
-                      players.find((p) => p.id === order.player_id)?.name || "",
-                    player_initials: (
-                      players.find((p) => p.id === order.player_id)?.name || ""
-                    )
-                      .split(" ")
-                      .map((n: string) => n[0])
-                      .join("")
-                      .toUpperCase(),
-                    stock_name:
-                      stocks.find((s) => s.id === order.stock_id)?.name || "",
-                    stock_symbol:
-                      stocks.find((s) => s.id === order.stock_id)?.symbol || "",
-                    executed_quantity: order.execution_quantity || 0,
-                    executed_price_total: order.execution_price_total || 0,
-                    requested_quantity: order.requested_quantity,
-                    requested_price_total: order.requested_price_total,
-                    type: order.type,
-                    created_at: order.created_at,
-                  }))}
-                />
-              )}
-            </div>
-          )}
+              </div>
+            ) : (
+              <OrderHistory
+                orders={orders.map((order) =>
+                  mapOrderToDetails(order, players, stocks)
+                )}
+              />
+            )}
+          </div>
 
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-500">
@@ -266,35 +247,11 @@ export default function LobbyPage({ params }: { params: { id: string } }) {
             <Button onClick={handleProceedPhase} disabled={isProcessing}>
               {isProcessing
                 ? "Processing..."
-                : `Proceed to ${formatPhase(getNextPhase(room.current_phase))}`}
+                : `Proceed to ${getPhaseInfo(room.current_phase).label}`}
             </Button>
           </div>
         </div>
       </div>
     </main>
   );
-}
-
-function formatPhase(phase: string) {
-  return phase
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function getNextPhase(
-  currentPhase:
-    | "submitting_orders"
-    | "executing_orders"
-    | "revealing_event"
-    | "paying_dividends"
-) {
-  const phases = {
-    submitting_orders: "executing_orders",
-    executing_orders: "revealing_event",
-    revealing_event: "paying_dividends",
-    paying_dividends: "submitting_orders",
-  } as const;
-
-  return phases[currentPhase];
 }

@@ -1,5 +1,4 @@
-import JoinGameForm from "@/components/player/JoinGameForm";
-
+import { JoinGameForm } from "@/components/player/JoinGameForm";
 export default function JoinGame() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">

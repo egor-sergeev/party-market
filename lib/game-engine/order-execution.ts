@@ -1,4 +1,6 @@
-import { Order, Stock, supabase } from "@/lib/supabase";
+import { type GameOrder } from "@/lib/types/game";
+import { type Stock } from "@/lib/types/supabase";
+import { supabase } from "@/lib/utils";
 
 interface OrderExecutionResult {
   executedQuantity: number;
@@ -26,7 +28,7 @@ function calculatePriceChange(params: {
 }
 
 async function executeBuyOrder(
-  order: Order,
+  order: GameOrder,
   stockState: StockState
 ): Promise<OrderExecutionResult> {
   const maxQuantity = Math.floor(
@@ -56,7 +58,7 @@ async function executeBuyOrder(
 }
 
 async function executeSellOrder(
-  order: Order,
+  order: GameOrder,
   stockState: StockState
 ): Promise<OrderExecutionResult> {
   const executedQuantity = order.requested_quantity;

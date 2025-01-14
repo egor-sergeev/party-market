@@ -1,17 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { type Stock } from "@/lib/supabase";
+import { type StockOrderFormProps } from "@/lib/types/ui";
 import { cn } from "@/lib/utils";
 import { MinusIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
-
-interface StockOrderFormProps {
-  stock: Stock;
-  ownedQuantity: number;
-  type: "buy" | "sell";
-  playerCash: number;
-  onCancel: () => void;
-  onSubmit: (quantity: number) => Promise<void>;
-}
 
 export function StockOrderForm({
   stock,
