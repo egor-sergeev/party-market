@@ -14,7 +14,6 @@ interface ProgressControlProps {
 
 const PHASE_LABELS: Record<RoomPhase, string> = {
   waiting: "Waiting",
-  generating_event: "Generating Event",
   submitting_orders: "Order Submission",
   executing_orders: "Order Execution",
   revealing_event: "Event Reveal",
@@ -24,14 +23,12 @@ const PHASE_LABELS: Record<RoomPhase, string> = {
 const getNextPhaseLabel = (currentPhase: RoomPhase): string => {
   switch (currentPhase) {
     case "waiting":
-      return "Generate Event";
-    case "generating_event":
       return "Submit Orders";
     case "submitting_orders":
-      return "Execute Orders";
-    case "executing_orders":
       return "Reveal Events";
     case "revealing_event":
+      return "Execute Orders";
+    case "executing_orders":
       return "Pay Dividends";
     case "paying_dividends":
       return "Next Round";

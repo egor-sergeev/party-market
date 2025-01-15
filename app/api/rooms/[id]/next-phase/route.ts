@@ -1,14 +1,18 @@
-import { executeOrders, generateEvent, payDividends } from "@/lib/game";
+import {
+  applyEventEffects,
+  executeOrders,
+  generateEvent,
+  payDividends,
+} from "@/lib/game";
 import type { RoomPhase, RoomStatus } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 const PHASE_ORDER: RoomPhase[] = [
-  "generating_event",
   "submitting_orders",
-  "executing_orders",
   "revealing_event",
+  "executing_orders",
   "paying_dividends",
 ];
 
@@ -66,6 +70,11 @@ export async function POST(
       });
     }
 
+    // Generate event for the next round if this is the last phase
+    if (isLastPhase) {
+      await generateEvent(supabase, params.id, nextRound);
+    }
+
     // Phase-specific validations and handlers
     if (room.current_phase === "submitting_orders") {
       // Check if all players have submitted orders
@@ -88,12 +97,12 @@ export async function POST(
           { status: 400 }
         );
       }
+    } else if (room.current_phase === "revealing_event") {
+      await applyEventEffects(supabase, params.id, room.current_round);
     } else if (room.current_phase === "executing_orders") {
       await executeOrders(supabase, params.id);
     } else if (room.current_phase === "paying_dividends") {
       await payDividends(supabase, params.id);
-    } else if (room.current_phase === "generating_event") {
-      await generateEvent(supabase, params.id);
     }
 
     // Update room state

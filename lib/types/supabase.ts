@@ -1,6 +1,5 @@
 export type RoomPhase =
   | "waiting"
-  | "generating_event"
   | "submitting_orders"
   | "executing_orders"
   | "revealing_event"

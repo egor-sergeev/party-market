@@ -1,3 +1,4 @@
+import { generateEvent } from "@/lib/game";
 import { DEFAULT_ROUNDS } from "@/lib/game-config";
 import type { StockTemplate } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
@@ -10,8 +11,6 @@ export async function POST(
 ) {
   try {
     const { totalRounds } = await request.json();
-    console.log("Starting room:", { roomId: params.id, totalRounds });
-
     const supabase = createRouteHandlerClient({ cookies });
 
     // Get active stock templates
@@ -32,8 +31,6 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    console.log("Found templates:", templates.length);
 
     // Generate stocks for the room
     const stocks = templates.map((template: StockTemplate) => ({
@@ -58,14 +55,12 @@ export async function POST(
       throw stocksError;
     }
 
-    console.log("Inserted stocks:", stocks.length);
-
     // Update room status and total rounds
     const { error: roomError } = await supabase
       .from("rooms")
       .update({
         status: "IN_PROGRESS",
-        current_phase: "generating_event",
+        current_phase: "submitting_orders",
         total_rounds: totalRounds || DEFAULT_ROUNDS,
       })
       .eq("id", params.id);
@@ -75,19 +70,14 @@ export async function POST(
       throw roomError;
     }
 
-    console.log("Room started successfully");
+    // Generate first event
+    await generateEvent(supabase, params.id, 1);
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to start game:", {
-      error,
-      message: error instanceof Error ? error.message : "Unknown error",
-      roomId: params.id,
-    });
-
+    console.error("Failed to start game:", error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to start game",
-      },
+      { error: "Failed to start game" },
       { status: 500 }
     );
   }

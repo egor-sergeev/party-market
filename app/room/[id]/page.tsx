@@ -1,8 +1,10 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { EventCard } from "./EventCard";
 import { PlayersOverviewList } from "./PlayersOverviewList";
 import { ProgressControl } from "./ProgressControl";
+import { RoomCode } from "./RoomCode";
 import { StocksOverviewTable } from "./StocksOverviewTable";
 
 interface RoomPageProps {
@@ -27,7 +29,9 @@ export default async function RoomPage({ params: { id } }: RoomPageProps) {
     <>
       <div className="space-y-6 pb-24">
         <div className="container border-b pb-4">
-          <h1 className="text-2xl font-bold">Room Code: {room.code}</h1>
+          <h1 className="text-2xl font-bold">
+            Room Code: <RoomCode code={room.code} />
+          </h1>
         </div>
 
         <div className="container grid grid-cols-12 gap-6">
@@ -56,7 +60,7 @@ export default async function RoomPage({ params: { id } }: RoomPageProps) {
           <div className="col-span-3 space-y-6">
             <section className="space-y-4">
               <h2 className="text-lg font-semibold">Current Event</h2>
-              {/* TODO: Add Event component */}
+              <EventCard roomId={id} />
             </section>
 
             <section className="space-y-4">
