@@ -147,30 +147,15 @@ export async function applyEventEffects(
 
     // Apply each effect to corresponding stock
     for (const effect of event.effects) {
-      const { error: updateError } = await supabase
-        .from("stocks")
-        .update({
-          ...(effect.type === "price_change"
-            ? {
-                current_price: supabase.rpc("increment_column", {
-                  table_name: "stocks",
-                  column_name: "current_price",
-                  row_id: effect.stock_id,
-                  amount: effect.amount,
-                }),
-              }
-            : {
-                dividend_amount: supabase.rpc("increment_column", {
-                  table_name: "stocks",
-                  column_name: "dividend_amount",
-                  row_id: effect.stock_id,
-                  amount: effect.amount,
-                }),
-              }),
-        })
-        .eq("id", effect.stock_id);
+      const { error: rpcError } = await supabase.rpc("increment_column", {
+        table_name: "stocks",
+        column_name:
+          effect.type === "price_change" ? "current_price" : "dividend_amount",
+        row_id: effect.stock_id,
+        amount: effect.amount,
+      });
 
-      if (updateError) throw updateError;
+      if (rpcError) throw rpcError;
     }
   } catch (error) {
     console.error("Failed to apply event effects:", error);

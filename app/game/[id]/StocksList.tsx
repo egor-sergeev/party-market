@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/lib/auth";
-import { Stock } from "@/lib/types/supabase";
+import { RoomPhase, Stock } from "@/lib/types/supabase";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useCallback, useEffect, useState } from "react";
 import { OrderDrawer } from "./OrderDrawer";
@@ -29,6 +29,7 @@ export function StocksList({ roomId }: StocksListProps) {
     null
   );
   const [playerCash, setPlayerCash] = useState(0);
+  const [currentPhase, setCurrentPhase] = useState<RoomPhase | null>(null);
   const supabase = createClientComponentClient();
   const { user, isLoading: isAuthLoading } = useUser();
 
@@ -53,22 +54,27 @@ export function StocksList({ roomId }: StocksListProps) {
 
       if (error) throw error;
 
-      // Get player's cash and pending orders
-      const [{ data: player }, { data: pendingOrder }] = await Promise.all([
-        supabase
-          .from("players")
-          .select("cash")
-          .eq("room_id", roomId)
-          .eq("user_id", user.id)
-          .single(),
-        supabase
-          .from("orders")
-          .select("stock_id")
-          .eq("room_id", roomId)
-          .eq("user_id", user.id)
-          .eq("status", "pending")
-          .maybeSingle(),
-      ]);
+      const [{ data: player }, { data: pendingOrder }, { data: room }] =
+        await Promise.all([
+          supabase
+            .from("players")
+            .select("cash")
+            .eq("room_id", roomId)
+            .eq("user_id", user.id)
+            .single(),
+          supabase
+            .from("orders")
+            .select("stock_id")
+            .eq("room_id", roomId)
+            .eq("user_id", user.id)
+            .eq("status", "pending")
+            .maybeSingle(),
+          supabase
+            .from("rooms")
+            .select("current_phase")
+            .eq("id", roomId)
+            .single(),
+        ]);
 
       // Transform and sort stocks by total worth
       const transformedStocks = data.map((stock: any) => ({
@@ -84,6 +90,7 @@ export function StocksList({ roomId }: StocksListProps) {
       setHasPendingOrder(!!pendingOrder);
       setPendingOrderStockId(pendingOrder?.stock_id || null);
       setPlayerCash(player?.cash || 0);
+      setCurrentPhase(room?.current_phase || null);
     } catch (error) {
       console.error("Error fetching stocks:", error);
     } finally {
@@ -130,6 +137,16 @@ export function StocksList({ roomId }: StocksListProps) {
         },
         fetchStocks
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "rooms",
+          filter: `id=eq.${roomId}`,
+        },
+        fetchStocks
+      )
       .subscribe();
 
     return () => {
@@ -137,7 +154,20 @@ export function StocksList({ roomId }: StocksListProps) {
     };
   }, [roomId, supabase, fetchStocks]);
 
+  const canSubmitOrders = currentPhase === "submitting_orders";
+
+  const canBuyStock = (stock: StockWithQuantity) => {
+    return (
+      canSubmitOrders && !hasPendingOrder && playerCash >= stock.current_price
+    );
+  };
+
+  const canSellStock = (stock: StockWithQuantity) => {
+    return canSubmitOrders && !hasPendingOrder && stock.owned_quantity > 0;
+  };
+
   const handleOrder = (stock: StockWithQuantity, type: "buy" | "sell") => {
+    if (!canSubmitOrders) return;
     setSelectedStock(stock);
     setOrderType(type);
   };
@@ -146,6 +176,12 @@ export function StocksList({ roomId }: StocksListProps) {
     setSelectedStock(null);
     setOrderType(null);
   };
+
+  useEffect(() => {
+    if (!canSubmitOrders) {
+      handleCloseDrawer();
+    }
+  }, [canSubmitOrders]);
 
   const handleOrderSubmitted = () => {
     handleCloseDrawer();
@@ -227,6 +263,7 @@ export function StocksList({ roomId }: StocksListProps) {
                   <Button
                     variant="outline"
                     onClick={() => handleCancelOrder(stock.id)}
+                    disabled={!canSubmitOrders}
                   >
                     Cancel Order
                   </Button>
@@ -235,16 +272,14 @@ export function StocksList({ roomId }: StocksListProps) {
                     <Button
                       variant="outline"
                       onClick={() => handleOrder(stock, "buy")}
-                      disabled={
-                        hasPendingOrder || playerCash < stock.current_price
-                      }
+                      disabled={!canBuyStock(stock)}
                     >
                       Buy
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => handleOrder(stock, "sell")}
-                      disabled={hasPendingOrder || stock.owned_quantity === 0}
+                      disabled={!canSellStock(stock)}
                     >
                       Sell
                     </Button>
