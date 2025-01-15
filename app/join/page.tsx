@@ -38,17 +38,22 @@ export default function JoinPage() {
     },
   });
 
-  // Load name from local storage
   useEffect(() => {
-    const savedName = localStorage.getItem("playerName");
-    if (savedName) {
-      form.setValue("name", savedName);
+    if (user?.user_metadata?.player_name) {
+      form.setValue("name", user.user_metadata.player_name);
     }
-  }, [form]);
+  }, [form, user]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Find room by code
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { player_name: values.name },
+      });
+
+      if (updateError) {
+        console.error("Failed to update user metadata:", updateError);
+      }
+
       const { data: room, error: roomError } = await supabase
         .from("rooms")
         .select("id")
@@ -78,9 +83,6 @@ export default function JoinPage() {
         }
         return;
       }
-
-      // Save name for future use
-      localStorage.setItem("playerName", values.name);
 
       // Navigate to game
       router.push(`/game/${room.id}`);
