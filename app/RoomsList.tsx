@@ -1,3 +1,5 @@
+import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/lib/auth";
 import { Room } from "@/lib/types/supabase";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useEffect, useState } from "react";
@@ -7,23 +9,17 @@ export function RoomsList() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClientComponentClient();
+  const { user, isLoading: isAuthLoading } = useUser();
 
   useEffect(() => {
     async function fetchRooms() {
       try {
-        const storedIds = JSON.parse(
-          localStorage.getItem("created_rooms") || "[]"
-        );
-
-        if (!storedIds.length) {
-          setIsLoading(false);
-          return;
-        }
+        if (!user) return;
 
         const { data, error } = await supabase
           .from("rooms")
           .select()
-          .in("id", storedIds)
+          .eq("owner_id", user.id)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -35,11 +31,22 @@ export function RoomsList() {
       }
     }
 
-    fetchRooms();
-  }, [supabase]);
+    if (!isAuthLoading) {
+      fetchRooms();
+    }
+  }, [supabase, user, isAuthLoading]);
 
-  if (isLoading) {
-    return null;
+  if (isLoading || isAuthLoading) {
+    return (
+      <section className="space-y-4">
+        <Skeleton className="h-7 w-48" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-[120px] rounded-lg" />
+          ))}
+        </div>
+      </section>
+    );
   }
 
   if (!rooms.length) {
@@ -48,7 +55,7 @@ export function RoomsList() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold">Previously Created Rooms</h2>
+      <h2 className="text-lg font-semibold">Your Created Rooms</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {rooms.map((room) => (
           <RoomItem
