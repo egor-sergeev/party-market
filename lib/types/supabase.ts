@@ -59,7 +59,7 @@ export interface PlayerStock {
   updated_at: string;
 }
 
-export type OrderType = "buy" | "sell";
+export type OrderType = "buy" | "sell" | "skip";
 export type OrderStatus = "pending" | "executed" | "failed";
 
 export interface Order {

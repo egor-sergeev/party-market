@@ -169,21 +169,23 @@ export const ProgressControl = memo(function ProgressControl({
     handleAdvance,
   } = useRoomProgress(roomId);
 
-  if (isLoading || !room) return null;
-
-  const phaseInfo = room.current_phase
-    ? getPhaseInfo(room.current_phase)
-    : null;
-
   const getButtonText = () => {
     if (isProcessing) {
       return "Processing...";
     }
 
-    return phaseInfo?.nextLabel || "Next Phase";
+    if (isLoading || !room) {
+      return "Loading...";
+    }
+
+    return room.current_phase
+      ? getPhaseInfo(room.current_phase)?.nextLabel || "Next Phase"
+      : "Start Game";
   };
 
   const getDisabledReason = () => {
+    if (!room || isLoading) return null;
+
     if (room.status === "WAITING" && playerCount < 2) {
       return "Waiting for more players to join...";
     }
@@ -198,23 +200,27 @@ export const ProgressControl = memo(function ProgressControl({
   };
 
   const disabledReason = getDisabledReason();
-  const isDisabled = Boolean(disabledReason);
+  const isDisabled = Boolean(disabledReason) || isLoading || !room;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
       <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-2">
         <div className="text-sm text-muted-foreground h-5">
-          {room.status === "IN_PROGRESS" && phaseInfo && (
-            <>
-              <span className="font-medium">{phaseInfo.label}</span>
-              {room.current_phase === "submitting_orders" && (
-                <>
-                  {" "}
-                  • {pendingOrders.size} of {playerCount} orders submitted
-                </>
-              )}
-            </>
-          )}
+          {!isLoading &&
+            room?.status === "IN_PROGRESS" &&
+            room.current_phase && (
+              <>
+                <span className="font-medium">
+                  {getPhaseInfo(room.current_phase)?.label}
+                </span>
+                {room.current_phase === "submitting_orders" && (
+                  <>
+                    {" "}
+                    • {pendingOrders.size} of {playerCount} orders submitted
+                  </>
+                )}
+              </>
+            )}
         </div>
 
         <div className="w-full max-w-2xl mx-auto relative">
@@ -230,9 +236,11 @@ export const ProgressControl = memo(function ProgressControl({
             className="w-full h-16 text-lg font-semibold relative"
           >
             <span className="flex items-center gap-2">
-              {isProcessing && <Loader2 className="w-5 h-5 animate-spin" />}
+              {(isProcessing || isLoading) && (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              )}
               {getButtonText()}
-              {!isProcessing && (
+              {!isProcessing && !isLoading && (
                 <kbd className="ml-2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
                   <span className="text-xs">⌴</span>
                   SPACE

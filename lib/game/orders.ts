@@ -118,6 +118,15 @@ async function executeOrder(
 }
 
 export async function executeOrders(supabase: SupabaseClient, roomId: string) {
+  // First, mark all skip orders as executed
+  await supabase
+    .from("orders")
+    .update({ status: "executed" })
+    .eq("room_id", roomId)
+    .eq("status", "pending")
+    .eq("type", "skip");
+
+  // Then process buy/sell orders
   const { data: orders, error: ordersError } = (await supabase
     .from("orders")
     .select(
@@ -140,6 +149,7 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
     )
     .eq("room_id", roomId)
     .eq("status", "pending")
+    .in("type", ["buy", "sell"])
     .order("created_at", { ascending: true })) as {
     data: OrderWithStock[] | null;
     error: any;
