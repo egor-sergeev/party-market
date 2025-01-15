@@ -102,7 +102,7 @@ function useGameState(roomId: string) {
           .order("created_at", { ascending: true }),
         supabase
           .from("orders")
-          .select("player_id")
+          .select("user_id")
           .eq("room_id", roomId)
           .eq("status", "pending"),
       ]);
@@ -114,7 +114,7 @@ function useGameState(roomId: string) {
       setGameState({
         room: roomData.data,
         players: playersData.data,
-        pendingOrders: new Set(ordersData.data?.map((o) => o.player_id)),
+        pendingOrders: new Set(ordersData.data?.map((o) => o.user_id)),
       });
       setError(null);
     } catch (error) {

@@ -30,12 +30,12 @@ export function EventCard({ roomId }: EventCardProps) {
       setRoom(room);
 
       // Get event for current round
-      const { data: event } = await supabase
+      const { data: event, error: eventError } = await supabase
         .from("events")
         .select()
         .eq("room_id", roomId)
         .eq("round", room.current_round)
-        .single();
+        .maybeSingle();
 
       if (!event) {
         setEvent(null);

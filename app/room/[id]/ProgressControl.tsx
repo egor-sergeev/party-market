@@ -51,20 +51,20 @@ function useRoomProgress(roomId: string) {
     try {
       const [roomData, playersData, ordersData] = await Promise.all([
         supabase.from("rooms").select().eq("id", roomId).single(),
-        supabase.from("players").select("id").eq("room_id", roomId),
+        supabase.from("players").select("user_id").eq("room_id", roomId),
         supabase
           .from("orders")
-          .select("player_id")
+          .select("user_id")
           .eq("room_id", roomId)
           .eq("status", "pending"),
       ]);
+      if (roomData.error) throw roomData.error;
+      if (playersData.error) throw playersData.error;
+      if (ordersData.error) throw ordersData.error;
 
-      if (roomData.error || playersData.error || ordersData.error)
-        throw roomData.error;
-
-      const allPlayerIds = new Set(playersData.data.map((p) => p.id));
+      const allPlayerIds = new Set(playersData.data.map((p) => p.user_id));
       const submittedPlayerIds = new Set(
-        ordersData.data?.map((o) => o.player_id)
+        ordersData.data?.map((o) => o.user_id)
       );
 
       setRoom(roomData.data);

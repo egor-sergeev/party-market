@@ -7,11 +7,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { playerId } = await request.json();
+    const { userId } = await request.json();
 
-    if (!playerId?.trim()) {
+    if (!userId?.trim()) {
       return NextResponse.json(
-        { error: "Player ID is required" },
+        { error: "User ID is required" },
         { status: 400 }
       );
     }
@@ -22,7 +22,7 @@ export async function POST(
     const { data: player, error: playerError } = await supabase
       .from("players")
       .select()
-      .eq("id", playerId)
+      .eq("user_id", userId)
       .eq("room_id", params.id)
       .single();
 
@@ -41,7 +41,7 @@ export async function POST(
     const { error: stocksError } = await supabase
       .from("player_stocks")
       .delete()
-      .eq("player_id", playerId)
+      .eq("user_id", userId)
       .eq("room_id", params.id);
 
     if (stocksError) {
@@ -52,7 +52,7 @@ export async function POST(
     const { error: ordersError } = await supabase
       .from("orders")
       .delete()
-      .eq("player_id", playerId)
+      .eq("user_id", userId)
       .eq("room_id", params.id)
       .eq("status", "pending");
 
@@ -64,7 +64,7 @@ export async function POST(
     const { error: deleteError } = await supabase
       .from("players")
       .delete()
-      .eq("id", playerId)
+      .eq("user_id", userId)
       .eq("room_id", params.id);
 
     if (deleteError) {
@@ -74,7 +74,7 @@ export async function POST(
     // Check if this was the last player and the room is in WAITING status
     const { data: remainingPlayers, error: countError } = await supabase
       .from("players")
-      .select("id")
+      .select("user_id")
       .eq("room_id", params.id);
 
     if (countError) {

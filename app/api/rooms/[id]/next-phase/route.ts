@@ -1,9 +1,6 @@
-import {
-  applyEventEffects,
-  executeOrders,
-  generateEvent,
-  payDividends,
-} from "@/lib/game";
+import { payAllDividends } from "@/lib/game/dividends";
+import { applyEventEffects, generateEvent } from "@/lib/game/events";
+import { executeOrders } from "@/lib/game/orders";
 import type { RoomPhase, RoomStatus } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
@@ -80,16 +77,16 @@ export async function POST(
       // Check if all players have submitted orders
       const { data: players } = await supabase
         .from("players")
-        .select("id")
+        .select("user_id")
         .eq("room_id", params.id);
 
       const { data: orders } = await supabase
         .from("orders")
-        .select("player_id")
+        .select("user_id")
         .eq("room_id", params.id)
         .eq("status", "pending");
 
-      const uniquePlayerOrders = new Set(orders?.map((o) => o.player_id));
+      const uniquePlayerOrders = new Set(orders?.map((o) => o.user_id));
 
       if (players?.length !== uniquePlayerOrders.size) {
         return NextResponse.json(
@@ -102,7 +99,7 @@ export async function POST(
     } else if (room.current_phase === "executing_orders") {
       await executeOrders(supabase, params.id);
     } else if (room.current_phase === "paying_dividends") {
-      await payDividends(supabase, params.id);
+      await payAllDividends(supabase, params.id);
     }
 
     // Update room state

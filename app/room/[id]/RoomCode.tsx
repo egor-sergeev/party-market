@@ -17,6 +17,7 @@ export function RoomCode({ code }: RoomCodeProps) {
     setHasCopied(true);
     toast({
       description: "Room code copied to clipboard",
+      duration: 1000,
     });
     setTimeout(() => setHasCopied(false), 2000);
   };

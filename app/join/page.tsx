@@ -65,8 +65,8 @@ export default function JoinPage() {
         return;
       }
 
-      // Create player
-      const { error: playerError } = await supabase.from("players").insert({
+      // Upsert player record
+      const { error: playerError } = await supabase.from("players").upsert({
         user_id: user?.id,
         room_id: room.id,
         name: values.name,
@@ -74,13 +74,7 @@ export default function JoinPage() {
       });
 
       if (playerError) {
-        if (playerError.code === "23505") {
-          form.setError("name", {
-            message: "You have already joined this room",
-          });
-        } else {
-          form.setError("root", { message: "Failed to join room" });
-        }
+        form.setError("root", { message: "Failed to join room" });
         return;
       }
 

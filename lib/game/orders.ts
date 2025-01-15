@@ -15,7 +15,7 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
     .select(
       `
       id,
-      player_id,
+      user_id,
       stock_id,
       type,
       requested_quantity,
@@ -75,14 +75,14 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
         const { data: existingHolding } = await supabase
           .from("player_stocks")
           .select("id, quantity")
-          .eq("player_id", order.player_id)
+          .eq("user_id", order.user_id)
           .eq("stock_id", order.stock_id)
           .single();
 
         // Update cash and holdings
         await Promise.all([
           supabase.rpc("update_player_cash", {
-            player_id: order.player_id,
+            user_id: order.user_id,
             amount: -executionTotal,
           }),
           existingHolding
@@ -93,7 +93,7 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
                 })
                 .eq("id", existingHolding.id)
             : supabase.from("player_stocks").insert({
-                player_id: order.player_id,
+                user_id: order.user_id,
                 stock_id: order.stock_id,
                 room_id: roomId,
                 quantity: executionQuantity,
@@ -131,7 +131,7 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
       const { data: holding } = await supabase
         .from("player_stocks")
         .select("quantity")
-        .eq("player_id", order.player_id)
+        .eq("user_id", order.user_id)
         .eq("stock_id", order.stock_id)
         .single();
 
@@ -146,13 +146,13 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
           // Update cash, holdings, and stock price in parallel
           await Promise.all([
             supabase.rpc("update_player_cash", {
-              player_id: order.player_id,
+              user_id: order.user_id,
               amount: executionTotal,
             }),
             supabase
               .from("player_stocks")
               .update({ quantity: holding.quantity - executionQuantity })
-              .eq("player_id", order.player_id)
+              .eq("user_id", order.user_id)
               .eq("stock_id", order.stock_id),
             supabase
               .from("stocks")

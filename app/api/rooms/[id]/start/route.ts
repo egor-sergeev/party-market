@@ -1,4 +1,4 @@
-import { generateEvent } from "@/lib/game";
+import { generateEvent } from "@/lib/game/events";
 import { DEFAULT_ROUNDS } from "@/lib/game-config";
 import type { StockTemplate } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";

@@ -37,7 +37,7 @@ export function RoomItem({ id, code, status, createdAt }: RoomItemProps) {
         </div>
       </CardContent>
       <CardFooter>
-        <Link href={`/lobby/${id}`} className="w-full">
+        <Link href={`/room/${id}`} className="w-full">
           <Button className="w-full">Enter Room</Button>
         </Link>
       </CardFooter>

@@ -31,7 +31,7 @@ export async function POST(
       .from("orders")
       .select()
       .eq("room_id", params.id)
-      .eq("player_id", playerId)
+      .eq("user_id", playerId)
       .eq("status", "pending");
 
     if (ordersError) throw ordersError;
@@ -47,7 +47,7 @@ export async function POST(
       .from("orders")
       .insert({
         room_id: params.id,
-        player_id: playerId,
+        user_id: playerId,
         stock_id: stockId,
         type: type as OrderType,
         requested_quantity: quantity,

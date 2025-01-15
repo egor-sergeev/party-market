@@ -9,14 +9,6 @@ export async function createRoom(): Promise<Room> {
   if (!response.ok) throw new Error("Failed to create room");
 
   const room: Room = await response.json();
-
-  // Store room ID in local storage
-  const storedIds = JSON.parse(localStorage.getItem("created_rooms") || "[]");
-  localStorage.setItem(
-    "created_rooms",
-    JSON.stringify(Array.from(new Set([...storedIds, room.id])))
-  );
-
   return room;
 }
 
