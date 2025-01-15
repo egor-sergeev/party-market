@@ -19,7 +19,7 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       return techStocks.map((stock) => ({
         type: "price_change",
         stock_id: stock.id,
-        amount: Math.floor(stock.current_price * 0.2), // 20% increase
+        amount: Math.floor(stock.current_price * 0.2),
       }));
     },
   },
@@ -34,7 +34,7 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       return affectedStocks.map((stock) => ({
         type: "price_change",
         stock_id: stock.id,
-        amount: Math.floor(stock.current_price * -0.15), // 15% decrease
+        amount: Math.floor(stock.current_price * -0.15),
       }));
     },
   },
@@ -49,7 +49,7 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       return consumerStocks.map((stock) => ({
         type: "dividend_change",
         stock_id: stock.id,
-        amount: Math.floor(stock.dividend_amount * 0.5), // 50% dividend increase
+        amount: Math.floor(stock.dividend_amount * 0.5),
       }));
     },
   },
@@ -64,12 +64,12 @@ const EVENT_TEMPLATES: EventTemplate[] = [
         {
           type: "price_change",
           stock_id: stock.id,
-          amount: Math.floor(stock.current_price * -0.1), // 10% price decrease
+          amount: Math.floor(stock.current_price * -0.1),
         },
         {
           type: "dividend_change",
           stock_id: stock.id,
-          amount: Math.floor(stock.dividend_amount * -0.3), // 30% dividend decrease
+          amount: Math.floor(stock.dividend_amount * -0.3),
         },
       ]);
     },
@@ -84,7 +84,7 @@ const EVENT_TEMPLATES: EventTemplate[] = [
       return techStocks.map((stock) => ({
         type: "dividend_change",
         stock_id: stock.id,
-        amount: Math.floor(stock.dividend_amount * 0.4), // 40% dividend increase
+        amount: Math.floor(stock.dividend_amount * 0.4),
       }));
     },
   },
@@ -95,37 +95,28 @@ export async function generateEvent(
   roomId: string,
   round: number
 ) {
-  try {
-    // Get current stocks for the room
-    const { data: stocks, error: stocksError } = await supabase
-      .from("stocks")
-      .select()
-      .eq("room_id", roomId);
+  const { data: stocks, error: stocksError } = await supabase
+    .from("stocks")
+    .select("*, rooms(code)")
+    .eq("room_id", roomId);
 
-    if (stocksError) throw stocksError;
-    if (!stocks?.length) throw new Error("No stocks found for room");
+  if (stocksError) throw stocksError;
+  if (!stocks?.length) throw new Error("No stocks found for room");
 
-    // Select random event template
-    const template =
-      EVENT_TEMPLATES[Math.floor(Math.random() * EVENT_TEMPLATES.length)];
+  const template =
+    EVENT_TEMPLATES[Math.floor(Math.random() * EVENT_TEMPLATES.length)];
 
-    // Generate effects using template
-    const effects = template.getEffects(stocks);
+  const effects = template.getEffects(stocks);
 
-    // Insert event with effects
-    const { error: eventError } = await supabase.from("events").insert({
-      room_id: roomId,
-      round: round,
-      title: template.title,
-      description: template.description,
-      effects: effects,
-    });
+  const { error: eventError } = await supabase.from("events").insert({
+    room_id: roomId,
+    round: round,
+    title: template.title,
+    description: template.description,
+    effects: effects,
+  });
 
-    if (eventError) throw eventError;
-  } catch (error) {
-    console.error("Failed to generate event:", error);
-    throw error;
-  }
+  if (eventError) throw eventError;
 }
 
 export async function applyEventEffects(
@@ -133,32 +124,25 @@ export async function applyEventEffects(
   roomId: string,
   round: number
 ) {
-  try {
-    // Get event for current round
-    const { data: event, error: eventError } = await supabase
-      .from("events")
-      .select()
-      .eq("room_id", roomId)
-      .eq("round", round)
-      .single();
+  const { data: event, error: eventError } = await supabase
+    .from("events")
+    .select("*, rooms(code)")
+    .eq("room_id", roomId)
+    .eq("round", round)
+    .single();
 
-    if (eventError) throw eventError;
-    if (!event) return;
+  if (eventError) throw eventError;
+  if (!event) return;
 
-    // Apply each effect to corresponding stock
-    for (const effect of event.effects) {
-      const { error: rpcError } = await supabase.rpc("increment_column", {
-        table_name: "stocks",
-        column_name:
-          effect.type === "price_change" ? "current_price" : "dividend_amount",
-        row_id: effect.stock_id,
-        amount: effect.amount,
-      });
+  for (const effect of event.effects) {
+    const { error: rpcError } = await supabase.rpc("increment_column", {
+      table_name: "stocks",
+      column_name:
+        effect.type === "price_change" ? "current_price" : "dividend_amount",
+      row_id: effect.stock_id,
+      amount: effect.amount,
+    });
 
-      if (rpcError) throw rpcError;
-    }
-  } catch (error) {
-    console.error("Failed to apply event effects:", error);
-    throw error;
+    if (rpcError) throw rpcError;
   }
 }

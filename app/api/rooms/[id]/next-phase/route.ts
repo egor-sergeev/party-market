@@ -1,17 +1,11 @@
 import { payAllDividends } from "@/lib/game/dividends";
 import { applyEventEffects, generateEvent } from "@/lib/game/events";
 import { executeOrders } from "@/lib/game/orders";
+import { getNextPhase, isLastPhase } from "@/lib/game/phases";
 import type { RoomPhase, RoomStatus } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-
-const PHASE_ORDER: RoomPhase[] = [
-  "submitting_orders",
-  "revealing_event",
-  "executing_orders",
-  "paying_dividends",
-];
 
 export async function POST(
   request: Request,
@@ -40,13 +34,13 @@ export async function POST(
       );
     }
 
-    // Get next phase
-    const currentPhaseIndex = PHASE_ORDER.indexOf(room.current_phase);
-    const nextPhase = PHASE_ORDER[(currentPhaseIndex + 1) % PHASE_ORDER.length];
+    const nextPhase = getNextPhase(room.current_phase);
 
     // Check if we need to increment round
-    const isLastPhase = currentPhaseIndex === PHASE_ORDER.length - 1;
-    const nextRound = isLastPhase ? room.current_round + 1 : room.current_round;
+    const shouldIncrementRound = isLastPhase(room.current_phase);
+    const nextRound = shouldIncrementRound
+      ? room.current_round + 1
+      : room.current_round;
 
     // Check if game should end
     if (nextRound > room.total_rounds) {
@@ -68,38 +62,18 @@ export async function POST(
     }
 
     // Generate event for the next round if this is the last phase
-    if (isLastPhase) {
+    if (shouldIncrementRound)
       await generateEvent(supabase, params.id, nextRound);
-    }
 
     // Phase-specific validations and handlers
-    if (room.current_phase === "submitting_orders") {
-      // Check if all players have submitted orders
-      const { data: players } = await supabase
-        .from("players")
-        .select("user_id")
-        .eq("room_id", params.id);
-
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("user_id")
-        .eq("room_id", params.id)
-        .eq("status", "pending");
-
-      const uniquePlayerOrders = new Set(orders?.map((o) => o.user_id));
-
-      if (players?.length !== uniquePlayerOrders.size) {
-        return NextResponse.json(
-          { error: "Not all players have submitted their orders" },
-          { status: 400 }
-        );
-      }
-    } else if (room.current_phase === "revealing_event") {
+    if (nextPhase === "revealing_event") {
       await applyEventEffects(supabase, params.id, room.current_round);
-    } else if (room.current_phase === "executing_orders") {
+    } else if (nextPhase === "executing_orders") {
       await executeOrders(supabase, params.id);
-    } else if (room.current_phase === "paying_dividends") {
+    } else if (nextPhase === "paying_dividends") {
       await payAllDividends(supabase, params.id);
+    } else if (nextPhase === "submitting_orders") {
+      // Do nothing besides updating the room state
     }
 
     // Update room state

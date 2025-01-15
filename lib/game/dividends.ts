@@ -3,53 +3,34 @@ import { SupabaseClient } from "@supabase/supabase-js";
 export async function payAllDividends(
   supabase: SupabaseClient,
   roomId: string
-) {
-  // Get all stocks with dividends for this room
-  const { data: stocks } = await supabase
-    .from("stocks")
-    .select()
-    .eq("room_id", roomId)
-    .gt("dividend_amount", 0);
+): Promise<void> {
+  const { error } = await supabase.rpc("pay_room_dividends", {
+    p_room_id: roomId,
+  });
 
-  // Pay dividends for each stock
-  if (stocks?.length) {
-    await Promise.all(
-      stocks.map((stock) =>
-        payDividends(supabase, roomId, stock.id, stock.dividend_amount)
-      )
-    );
-  }
+  if (error) throw error;
 }
 
-async function payDividends(
-  supabase: SupabaseClient,
-  roomId: string,
-  stockId: string,
-  dividendPerShare: number
-) {
-  const { data: holdings } = await supabase
-    .from("player_stocks")
-    .select("user_id, quantity")
-    .eq("room_id", roomId)
-    .eq("stock_id", stockId);
-
-  if (!holdings?.length) return;
-
-  const playerDividends: Record<string, number> = {};
-
-  for (const holding of holdings) {
-    const dividendAmount = holding.quantity * dividendPerShare;
-    playerDividends[holding.user_id] =
-      (playerDividends[holding.user_id] || 0) + dividendAmount;
-  }
-
-  // Update player cash in parallel
-  await Promise.all(
-    Object.entries(playerDividends).map(([userId, amount]) =>
-      supabase.rpc("update_player_cash", {
-        user_id: userId,
-        amount,
-      })
-    )
-  );
-}
+/*
+CREATE OR REPLACE FUNCTION pay_room_dividends(p_room_id UUID)
+RETURNS void AS $$
+BEGIN
+  -- For each stock with positive dividends in the room
+  WITH dividend_payments AS (
+    SELECT 
+      ps.user_id,
+      SUM(ps.quantity * s.dividend_amount) as total_dividend
+    FROM stocks s
+    JOIN player_stocks ps ON ps.stock_id = s.id
+    WHERE s.room_id = p_room_id 
+      AND s.dividend_amount > 0
+      AND ps.room_id = p_room_id
+    GROUP BY ps.user_id
+  )
+  UPDATE players p
+  SET cash = p.cash + dp.total_dividend
+  FROM dividend_payments dp
+  WHERE p.user_id = dp.user_id;
+END;
+$$ LANGUAGE plpgsql;
+*/

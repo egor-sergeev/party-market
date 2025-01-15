@@ -5,11 +5,119 @@ import { calculateNewStockPrice } from "./price";
 interface OrderWithStock extends Order {
   stocks: {
     current_price: number;
+    symbol: string;
+  };
+  players: {
+    name: string;
   };
 }
 
+interface ExecutionResult {
+  quantity: number;
+  total: number;
+}
+
+async function getStockPrice(
+  supabase: SupabaseClient,
+  stockId: string
+): Promise<number> {
+  const { data, error } = await supabase
+    .from("stocks")
+    .select("current_price")
+    .eq("id", stockId)
+    .single();
+
+  if (error) throw error;
+  return data.current_price;
+}
+
+async function executeOrder(
+  supabase: SupabaseClient,
+  order: OrderWithStock,
+  roomId: string,
+  totalStocksOwned: number
+): Promise<void> {
+  const currentPrice = await getStockPrice(supabase, order.stock_id);
+  let result: ExecutionResult;
+
+  if (order.type === "buy") {
+    const affordableQuantity = Math.floor(
+      order.requested_price_total / currentPrice
+    );
+    const actualQuantity = Math.min(
+      affordableQuantity,
+      order.requested_quantity
+    );
+    result = {
+      quantity: actualQuantity,
+      total: actualQuantity * currentPrice,
+    };
+  } else {
+    const { data: holding } = await supabase
+      .from("player_stocks")
+      .select("quantity")
+      .eq("user_id", order.user_id)
+      .eq("stock_id", order.stock_id)
+      .single();
+
+    const actualQuantity = Math.min(
+      holding?.quantity || 0,
+      order.requested_quantity
+    );
+    result = {
+      quantity: actualQuantity,
+      total: actualQuantity * currentPrice,
+    };
+  }
+
+  if (result.quantity > 0) {
+    const quantityDelta =
+      order.type === "buy" ? result.quantity : -result.quantity;
+    const cashDelta = order.type === "buy" ? -result.total : result.total;
+    const updatedPrice = calculateNewStockPrice({
+      currentPrice,
+      orderQuantity: result.quantity,
+      totalStocksOwned,
+      isBuy: order.type === "buy",
+    });
+
+    const [
+      { error: cashError },
+      { error: ownedStockError },
+      { error: stockUpdateError },
+    ] = await Promise.all([
+      supabase.rpc("update_player_cash", {
+        p_user_id: order.user_id,
+        amount: cashDelta,
+      }),
+      supabase.rpc("update_player_stocks", {
+        p_user_id: order.user_id,
+        p_stock_id: order.stock_id,
+        p_room_id: roomId,
+        p_quantity_delta: quantityDelta,
+      }),
+      supabase
+        .from("stocks")
+        .update({ current_price: updatedPrice })
+        .eq("id", order.stock_id),
+    ]);
+
+    if (cashError) throw cashError;
+    if (ownedStockError) throw ownedStockError;
+    if (stockUpdateError) throw stockUpdateError;
+  }
+
+  await supabase
+    .from("orders")
+    .update({
+      status: result.quantity > 0 ? "executed" : "failed",
+      execution_quantity: result.quantity,
+      execution_price_total: result.total,
+    })
+    .eq("id", order.id);
+}
+
 export async function executeOrders(supabase: SupabaseClient, roomId: string) {
-  // Get all pending orders with related stock data
   const { data: orders, error: ordersError } = (await supabase
     .from("orders")
     .select(
@@ -22,7 +130,11 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
       requested_price_total,
       status,
       stocks (
-        current_price
+        current_price,
+        symbol
+      ),
+      players!inner (
+        name
       )
     `
     )
@@ -34,16 +146,13 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
   };
 
   if (ordersError) throw ordersError;
+  if (!orders?.length) return;
 
-  // Get all current holdings for the room's stocks
-  const { data: holdings, error: holdingsError } = await supabase
+  const { data: holdings } = await supabase
     .from("player_stocks")
     .select("stock_id, quantity")
     .eq("room_id", roomId);
 
-  if (holdingsError) throw holdingsError;
-
-  // Calculate total stocks owned per stock
   const stocksOwned = holdings?.reduce(
     (
       acc: Record<string, number>,
@@ -55,132 +164,12 @@ export async function executeOrders(supabase: SupabaseClient, roomId: string) {
     {}
   );
 
-  // Execute each order sequentially
-  for (const order of orders || []) {
-    const currentPrice = order.stocks.current_price;
-    const totalStocksOwned = stocksOwned?.[order.stock_id] || 0;
-
-    if (order.type === "buy") {
-      const affordableQuantity = Math.floor(
-        order.requested_price_total / currentPrice
-      );
-      const executionQuantity = Math.min(
-        affordableQuantity,
-        order.requested_quantity
-      );
-      const executionTotal = executionQuantity * currentPrice;
-
-      if (executionQuantity > 0) {
-        // Update player's cash and stock holding in one query
-        const { data: existingHolding } = await supabase
-          .from("player_stocks")
-          .select("id, quantity")
-          .eq("user_id", order.user_id)
-          .eq("stock_id", order.stock_id)
-          .single();
-
-        // Update cash and holdings
-        await Promise.all([
-          supabase.rpc("update_player_cash", {
-            user_id: order.user_id,
-            amount: -executionTotal,
-          }),
-          existingHolding
-            ? supabase
-                .from("player_stocks")
-                .update({
-                  quantity: existingHolding.quantity + executionQuantity,
-                })
-                .eq("id", existingHolding.id)
-            : supabase.from("player_stocks").insert({
-                user_id: order.user_id,
-                stock_id: order.stock_id,
-                room_id: roomId,
-                quantity: executionQuantity,
-              }),
-        ]);
-
-        // Update stock price
-        const newPrice = calculateNewStockPrice({
-          currentPrice,
-          orderQuantity: executionQuantity,
-          totalStocksOwned,
-          isBuy: true,
-        });
-
-        await supabase
-          .from("stocks")
-          .update({ current_price: newPrice })
-          .eq("id", order.stock_id);
-
-        // Update total stocks owned for future calculations
-        stocksOwned[order.stock_id] = totalStocksOwned + executionQuantity;
-      }
-
-      // Update order status
-      await supabase
-        .from("orders")
-        .update({
-          status: executionQuantity > 0 ? "executed" : "failed",
-          execution_quantity: executionQuantity,
-          execution_price_total: executionTotal,
-        })
-        .eq("id", order.id);
-    } else {
-      // Sell order
-      const { data: holding } = await supabase
-        .from("player_stocks")
-        .select("quantity")
-        .eq("user_id", order.user_id)
-        .eq("stock_id", order.stock_id)
-        .single();
-
-      if (holding) {
-        const executionQuantity = Math.min(
-          holding.quantity,
-          order.requested_quantity
-        );
-        const executionTotal = executionQuantity * currentPrice;
-
-        if (executionQuantity > 0) {
-          // Update cash, holdings, and stock price in parallel
-          await Promise.all([
-            supabase.rpc("update_player_cash", {
-              user_id: order.user_id,
-              amount: executionTotal,
-            }),
-            supabase
-              .from("player_stocks")
-              .update({ quantity: holding.quantity - executionQuantity })
-              .eq("user_id", order.user_id)
-              .eq("stock_id", order.stock_id),
-            supabase
-              .from("stocks")
-              .update({
-                current_price: calculateNewStockPrice({
-                  currentPrice,
-                  orderQuantity: executionQuantity,
-                  totalStocksOwned,
-                  isBuy: false,
-                }),
-              })
-              .eq("id", order.stock_id),
-          ]);
-
-          // Update total stocks owned for future calculations
-          stocksOwned[order.stock_id] = totalStocksOwned - executionQuantity;
-        }
-
-        // Update order status
-        await supabase
-          .from("orders")
-          .update({
-            status: executionQuantity > 0 ? "executed" : "failed",
-            execution_quantity: executionQuantity,
-            execution_price_total: executionTotal,
-          })
-          .eq("id", order.id);
-      }
-    }
+  for (const order of orders) {
+    await executeOrder(
+      supabase,
+      order,
+      roomId,
+      stocksOwned?.[order.stock_id] || 0
+    );
   }
 }

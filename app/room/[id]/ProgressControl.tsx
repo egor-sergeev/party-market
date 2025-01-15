@@ -1,8 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { advancePhase, createRoom, startRoom } from "@/lib/rooms";
-import { Room, RoomPhase } from "@/lib/types/supabase";
+import { getPhaseInfo } from "@/lib/game/phases";
+import { advancePhase, startRoom } from "@/lib/rooms";
+import { Room } from "@/lib/types/supabase";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -11,31 +12,6 @@ import { memo, useCallback, useEffect, useState } from "react";
 interface ProgressControlProps {
   roomId: string;
 }
-
-const PHASE_LABELS: Record<RoomPhase, string> = {
-  waiting: "Waiting",
-  submitting_orders: "Order Submission",
-  executing_orders: "Order Execution",
-  revealing_event: "Event Reveal",
-  paying_dividends: "Dividend Payment",
-};
-
-const getNextPhaseLabel = (currentPhase: RoomPhase): string => {
-  switch (currentPhase) {
-    case "waiting":
-      return "Submit Orders";
-    case "submitting_orders":
-      return "Reveal Events";
-    case "revealing_event":
-      return "Execute Orders";
-    case "executing_orders":
-      return "Pay Dividends";
-    case "paying_dividends":
-      return "Next Round";
-    default:
-      return "Next Phase";
-  }
-};
 
 function useRoomProgress(roomId: string) {
   const [room, setRoom] = useState<Room | null>(null);
@@ -132,10 +108,11 @@ function useRoomProgress(roomId: string) {
         await startRoom(roomId);
       } else if (room.status === "IN_PROGRESS") {
         await advancePhase(roomId);
-      } else {
-        const newRoom = await createRoom();
-        router.push(`/room/${newRoom.id}`);
+      } else if (room.status === "FINISHED") {
+        // TODO: Create new room
       }
+
+      router.refresh();
     } catch (error) {
       console.error("Error advancing game:", error);
       setError(error as Error);
@@ -194,16 +171,16 @@ export const ProgressControl = memo(function ProgressControl({
 
   if (isLoading || !room) return null;
 
+  const phaseInfo = room.current_phase
+    ? getPhaseInfo(room.current_phase)
+    : null;
+
   const getButtonText = () => {
     if (isProcessing) {
-      if (room.status === "WAITING") return "Starting Game...";
-      if (room.status === "FINISHED") return "Creating Room...";
       return "Processing...";
     }
 
-    if (room.status === "WAITING") return "Start Game";
-    if (room.status === "FINISHED") return "Create New Room";
-    return `Proceed to ${getNextPhaseLabel(room.current_phase)}`;
+    return phaseInfo?.nextLabel || "Next Phase";
   };
 
   const getDisabledReason = () => {
@@ -227,11 +204,9 @@ export const ProgressControl = memo(function ProgressControl({
     <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
       <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-2">
         <div className="text-sm text-muted-foreground h-5">
-          {room.status === "IN_PROGRESS" && (
+          {room.status === "IN_PROGRESS" && phaseInfo && (
             <>
-              <span className="font-medium">
-                {PHASE_LABELS[room.current_phase]}
-              </span>
+              <span className="font-medium">{phaseInfo.label}</span>
               {room.current_phase === "submitting_orders" && (
                 <>
                   {" "}
