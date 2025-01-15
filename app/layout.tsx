@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+import { AuthProvider } from "@/lib/auth";
+import { Toaster } from "@/components/ui/toaster";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Party Market",
-  description: "Multiplayer stock trading party game",
+  description: "Multiplayer party game where players trade stocks",
 };
 
 export default function RootLayout({
@@ -18,7 +19,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div className="min-h-screen bg-background">
-          <div className="container max-w-8xl mx-auto px-4">{children}</div>
+          <div className="container max-w-8xl mx-auto px-4">
+            <AuthProvider>
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </div>
         </div>
       </body>
     </html>

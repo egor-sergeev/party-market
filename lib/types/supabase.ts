@@ -10,6 +10,7 @@ export type RoomStatus = "WAITING" | "IN_PROGRESS" | "FINISHED";
 export interface Room {
   id: string;
   code: string;
+  owner_id: string;
   status: RoomStatus;
   current_phase: RoomPhase;
   current_round: number;
@@ -41,7 +42,7 @@ export interface Stock {
 }
 
 export interface Player {
-  id: string;
+  user_id: string;
   room_id: string;
   name: string;
   cash: number;
@@ -50,7 +51,7 @@ export interface Player {
 
 export interface PlayerStock {
   id: string;
-  player_id: string;
+  user_id: string;
   stock_id: string;
   room_id: string;
   quantity: number;
@@ -64,7 +65,7 @@ export type OrderStatus = "pending" | "executed" | "failed";
 export interface Order {
   id: string;
   room_id: string;
-  player_id: string;
+  user_id: string;
   stock_id: string;
   type: OrderType;
   requested_quantity: number;

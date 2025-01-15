@@ -10,9 +10,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useUser } from "@/lib/auth";
 import { INITIAL_PLAYER_CASH } from "@/lib/game-config";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -26,6 +28,7 @@ const formSchema = z.object({
 export default function JoinPage() {
   const router = useRouter();
   const supabase = createClientComponentClient();
+  const { user, isLoading } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -59,6 +62,7 @@ export default function JoinPage() {
 
       // Create player
       const { error: playerError } = await supabase.from("players").insert({
+        user_id: user?.id,
         room_id: room.id,
         name: values.name,
         cash: INITIAL_PLAYER_CASH,
@@ -66,7 +70,9 @@ export default function JoinPage() {
 
       if (playerError) {
         if (playerError.code === "23505") {
-          form.setError("name", { message: "Name already taken" });
+          form.setError("name", {
+            message: "You have already joined this room",
+          });
         } else {
           form.setError("root", { message: "Failed to join room" });
         }
@@ -139,9 +145,15 @@ export default function JoinPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={form.formState.isSubmitting}
+              disabled={isLoading || form.formState.isSubmitting}
             >
-              {form.formState.isSubmitting ? "Joining..." : "Join Room"}
+              {form.formState.isSubmitting ? (
+                "Joining..."
+              ) : isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Join Room"
+              )}
             </Button>
           </form>
         </Form>
