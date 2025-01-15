@@ -18,6 +18,7 @@ export function SkipOrderButton({ roomId }: SkipOrderButtonProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasPendingOrder, setHasPendingOrder] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<RoomPhase | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const supabase = createClientComponentClient();
   const router = useRouter();
 
@@ -43,15 +44,18 @@ export function SkipOrderButton({ roomId }: SkipOrderButtonProps) {
         pendingOrders?.some((order) => order.type === "skip") || false;
       const hasPendingOrder = (pendingOrders || []).length > 0;
 
-      setHasPendingOrder(hasPendingOrder);
+      // Only update if not in the middle of submitting
+      if (!isSubmitting) {
+        setHasPendingOrder(hasPendingOrder);
+        setIsSkipped(hasSkipOrder);
+      }
       setCurrentPhase(room?.current_phase || null);
-      setIsSkipped(hasSkipOrder);
     } catch (error) {
       console.error("Error fetching state:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [roomId, user, supabase]);
+  }, [roomId, user, supabase, isSubmitting]);
 
   useEffect(() => {
     if (!isUserLoading) {
@@ -93,19 +97,13 @@ export function SkipOrderButton({ roomId }: SkipOrderButtonProps) {
     if (!user) return;
 
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
+      // Optimistically update UI
+      const newSkipState = !isSkipped;
+      setIsSkipped(newSkipState);
+      setHasPendingOrder(newSkipState);
 
-      if (isSkipped) {
-        // Delete skip order
-        const { error } = await supabase
-          .from("orders")
-          .delete()
-          .eq("room_id", roomId)
-          .eq("user_id", user.id)
-          .eq("type", "skip");
-
-        if (error) throw error;
-      } else {
+      if (newSkipState) {
         // Create skip order
         const { error } = await supabase.from("orders").insert({
           room_id: roomId,
@@ -117,15 +115,28 @@ export function SkipOrderButton({ roomId }: SkipOrderButtonProps) {
         });
 
         if (error) throw error;
+      } else {
+        // Delete skip order
+        const { error } = await supabase
+          .from("orders")
+          .delete()
+          .eq("room_id", roomId)
+          .eq("user_id", user.id)
+          .eq("type", "skip");
+
+        if (error) throw error;
       }
 
       router.refresh();
     } catch (error) {
       console.error("Error toggling skip:", error);
+      // Revert optimistic update on error
+      setIsSkipped(!isSkipped);
+      setHasPendingOrder(!hasPendingOrder);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
-  }, [isSkipped, roomId, user, supabase, router]);
+  }, [isSkipped, hasPendingOrder, roomId, user, supabase, router]);
 
   const canSubmitOrders = currentPhase === "submitting_orders";
   const isDisabled =
@@ -140,7 +151,7 @@ export function SkipOrderButton({ roomId }: SkipOrderButtonProps) {
       <Button
         variant={isSkipped ? "destructive" : "secondary"}
         onClick={handleToggleSkip}
-        disabled={isDisabled}
+        disabled={isDisabled || isSubmitting}
         className="w-full"
       >
         {isLoading || isUserLoading ? (
