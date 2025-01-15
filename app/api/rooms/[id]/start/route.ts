@@ -10,6 +10,8 @@ export async function POST(
 ) {
   try {
     const { totalRounds } = await request.json();
+    console.log("Starting room:", { roomId: params.id, totalRounds });
+
     const supabase = createRouteHandlerClient({ cookies });
 
     // Get active stock templates
@@ -18,14 +20,20 @@ export async function POST(
       .select()
       .eq("is_active", true);
 
-    if (templatesError) throw templatesError;
+    if (templatesError) {
+      console.error("Failed to fetch templates:", templatesError);
+      throw templatesError;
+    }
 
     if (!templates?.length) {
+      console.error("No active stock templates found");
       return NextResponse.json(
         { error: "No active stock templates found" },
         { status: 400 }
       );
     }
+
+    console.log("Found templates:", templates.length);
 
     // Generate stocks for the room
     const stocks = templates.map((template: StockTemplate) => ({
@@ -45,7 +53,12 @@ export async function POST(
     // Insert generated stocks
     const { error: stocksError } = await supabase.from("stocks").insert(stocks);
 
-    if (stocksError) throw stocksError;
+    if (stocksError) {
+      console.error("Failed to insert stocks:", stocksError);
+      throw stocksError;
+    }
+
+    console.log("Inserted stocks:", stocks.length);
 
     // Update room status and total rounds
     const { error: roomError } = await supabase
@@ -57,13 +70,24 @@ export async function POST(
       })
       .eq("id", params.id);
 
-    if (roomError) throw roomError;
+    if (roomError) {
+      console.error("Failed to update room:", roomError);
+      throw roomError;
+    }
 
+    console.log("Room started successfully");
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to start game:", error);
+    console.error("Failed to start game:", {
+      error,
+      message: error instanceof Error ? error.message : "Unknown error",
+      roomId: params.id,
+    });
+
     return NextResponse.json(
-      { error: "Failed to start game" },
+      {
+        error: error instanceof Error ? error.message : "Failed to start game",
+      },
       { status: 500 }
     );
   }

@@ -18,7 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div className="min-h-screen bg-background">
-          <div className="container max-w-6xl mx-auto px-4">{children}</div>
+          <div className="container max-w-8xl mx-auto px-4">{children}</div>
         </div>
       </body>
     </html>

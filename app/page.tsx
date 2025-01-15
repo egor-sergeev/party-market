@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Room } from "@/lib/types/supabase";
+import { createRoom } from "@/lib/rooms";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,23 +14,7 @@ export default function Home() {
   async function handleCreateRoom() {
     try {
       setIsCreating(true);
-      const response = await fetch("/api/rooms", {
-        method: "POST",
-      });
-
-      if (!response.ok) throw new Error("Failed to create room");
-
-      const room: Room = await response.json();
-
-      // Store room ID in local storage
-      const storedIds = JSON.parse(
-        localStorage.getItem("created_rooms") || "[]"
-      );
-      localStorage.setItem(
-        "created_rooms",
-        JSON.stringify(Array.from(new Set([...storedIds, room.id])))
-      );
-
+      const room = await createRoom();
       router.push(`/room/${room.id}`);
     } catch (error) {
       console.error("Error creating room:", error);

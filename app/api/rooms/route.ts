@@ -15,17 +15,8 @@ export function generateRoomCode(): string {
 export async function POST() {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-
-    // Start a transaction by getting active stock templates
-    const { data: templates, error: templatesError } = await supabase
-      .from("stock_templates")
-      .select()
-      .eq("is_active", true)
-      .limit(10);
-
-    if (templatesError) throw templatesError;
-
     const roomCode = generateRoomCode();
+
     const { data: room, error: roomError } = await supabase
       .from("rooms")
       .insert({
@@ -39,25 +30,6 @@ export async function POST() {
       .single();
 
     if (roomError) throw roomError;
-
-    // Create stocks for the room based on templates
-    const stocks = templates.map((template) => ({
-      room_id: room.id,
-      name: template.name,
-      symbol: template.symbol,
-      current_price: Math.floor(
-        template.min_price +
-          Math.random() * (template.max_price - template.min_price)
-      ),
-      dividend_amount: Math.floor(
-        template.min_dividend +
-          Math.random() * (template.max_dividend - template.min_dividend)
-      ),
-    }));
-
-    const { error: stocksError } = await supabase.from("stocks").insert(stocks);
-
-    if (stocksError) throw stocksError;
 
     return NextResponse.json(room);
   } catch (error) {
