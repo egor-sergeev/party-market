@@ -38,6 +38,7 @@ export interface Stock {
   current_price: number;
   dividend_amount: number;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Player {

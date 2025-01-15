@@ -2,6 +2,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { PlayersOverviewList } from "./PlayersOverviewList";
+import { StocksOverviewTable } from "./StocksOverviewTable";
 
 interface RoomPageProps {
   params: {
@@ -50,7 +51,7 @@ export default async function RoomPage({ params: { id } }: RoomPageProps) {
 
           <section className="space-y-4">
             <h2 className="text-lg font-semibold">Stocks</h2>
-            {/* TODO: Add StocksOverviewTable component */}
+            <StocksOverviewTable roomId={id} />
           </section>
         </div>
 

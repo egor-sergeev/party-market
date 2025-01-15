@@ -2,12 +2,9 @@
 
 import { Room } from "@/lib/types/supabase";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useEffect, useState } from "react";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { memo, useCallback, useEffect, useState } from "react";
 import { PlayerOverviewItem } from "./PlayerOverviewItem";
-
-interface PlayersOverviewListProps {
-  roomId: string;
-}
 
 interface PlayerWithNetWorth {
   id: string;
@@ -17,166 +14,178 @@ interface PlayerWithNetWorth {
   room_id: string;
 }
 
-export function PlayersOverviewList({ roomId }: PlayersOverviewListProps) {
-  const [room, setRoom] = useState<Room>();
-  const [players, setPlayers] = useState<PlayerWithNetWorth[]>([]);
-  const [orders, setOrders] = useState<{ player_id: string }[]>([]);
+interface GameState {
+  room: Room | null;
+  players: PlayerWithNetWorth[];
+  pendingOrders: Set<string>;
+}
+
+function setupSubscriptions(
+  supabase: SupabaseClient,
+  roomId: string,
+  onUpdate: () => void
+) {
+  return supabase
+    .channel(`game:${roomId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "rooms",
+        filter: `id=eq.${roomId}`,
+      },
+      onUpdate
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "players",
+        filter: `room_id=eq.${roomId}`,
+      },
+      onUpdate
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "player_stocks",
+        filter: `room_id=eq.${roomId}`,
+      },
+      onUpdate
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "stocks",
+        filter: `room_id=eq.${roomId}`,
+      },
+      onUpdate
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "orders",
+        filter: `room_id=eq.${roomId}`,
+      },
+      onUpdate
+    )
+    .subscribe();
+}
+
+function useGameState(roomId: string) {
+  const [gameState, setGameState] = useState<GameState>({
+    room: null,
+    players: [],
+    pendingOrders: new Set(),
+  });
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const supabase = createClientComponentClient();
 
-  const fetchAndSetRoom = async (supabase: any, roomId: string) => {
-    const roomResponse = await supabase
-      .from("rooms")
-      .select()
-      .eq("id", roomId)
-      .single();
-    if (roomResponse.error) throw roomResponse.error;
-    setRoom(roomResponse.data);
-    console.log("Fetched room");
-  };
+  const fetchData = useCallback(async () => {
+    try {
+      const [roomData, playersData, ordersData] = await Promise.all([
+        supabase.from("rooms").select().eq("id", roomId).single(),
+        supabase
+          .from("players_with_net_worth")
+          .select()
+          .eq("room_id", roomId)
+          .order("net_worth", { ascending: false })
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("orders")
+          .select("player_id")
+          .eq("room_id", roomId)
+          .eq("status", "pending"),
+      ]);
 
-  const fetchAndSetPlayers = async (supabase: any, roomId: string) => {
-    const playersResponse = await supabase
-      .from("players_with_net_worth")
-      .select()
-      .eq("room_id", roomId)
-      .order("net_worth", { ascending: false })
-      .order("created_at", { ascending: true });
-    if (playersResponse.error) throw playersResponse.error;
-    setPlayers(playersResponse.data);
-    console.log("Fetched players");
-  };
+      if (roomData.error) throw roomData.error;
+      if (playersData.error) throw playersData.error;
+      if (ordersData.error) throw ordersData.error;
 
-  const fetchAndSetPendingOrders = async (supabase: any, roomId: string) => {
-    const ordersResponse = await supabase
-      .from("orders")
-      .select("player_id")
-      .eq("room_id", roomId)
-      .eq("status", "pending");
-    if (ordersResponse.error) throw ordersResponse.error;
-    setOrders(ordersResponse.data || []);
-    console.log("Fetched orders");
-  };
-
-  // Fetch initial data
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        await Promise.all([
-          fetchAndSetRoom(supabase, roomId),
-          fetchAndSetPlayers(supabase, roomId),
-          fetchAndSetPendingOrders(supabase, roomId),
-        ]);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
+      setGameState({
+        room: roomData.data,
+        players: playersData.data,
+        pendingOrders: new Set(ordersData.data?.map((o) => o.player_id)),
+      });
+      setError(null);
+    } catch (error) {
+      setError(error as Error);
+      console.error("Error fetching game state:", error);
+    } finally {
+      setIsLoading(false);
     }
-
-    fetchData();
   }, [roomId, supabase]);
 
-  // Subscribe to realtime updates
   useEffect(() => {
-    if (!room) return;
-
-    const roomChannel = supabase
-      .channel(`room:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        async (payload) => {
-          setRoom(payload.new as Room);
-        }
-      )
-      .subscribe();
-
-    const playersChannel = supabase
-      .channel(`players:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "players",
-          filter: `room_id=eq.${roomId}`,
-        },
-        async () => await fetchAndSetPlayers(supabase, roomId)
-      )
-      .subscribe();
-
-    const playerStocksChannel = supabase
-      .channel(`player_stocks:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "player_stocks",
-          filter: `player_id.in.(${players.map((p) => p.id).join(",")})`,
-        },
-        async () => await fetchAndSetPlayers(supabase, roomId)
-      )
-      .subscribe();
-
-    const stocksChannel = supabase
-      .channel(`stocks:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "stocks",
-        },
-        async () => await fetchAndSetPlayers(supabase, roomId)
-      )
-      .subscribe();
-
-    const ordersChannel = supabase
-      .channel(`orders:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `room_id=eq.${roomId}`,
-        },
-        async () => await fetchAndSetPendingOrders(supabase, roomId)
-      )
-      .subscribe();
-
+    fetchData();
+    const channel = setupSubscriptions(supabase, roomId, fetchData);
     return () => {
-      roomChannel.unsubscribe();
-      playersChannel.unsubscribe();
-      playerStocksChannel.unsubscribe();
-      stocksChannel.unsubscribe();
-      ordersChannel.unsubscribe();
+      channel.unsubscribe();
     };
-  }, [roomId, supabase, room, players]);
+  }, [roomId, supabase, fetchData]);
 
-  if (isLoading || !room) {
+  return { gameState, isLoading, error };
+}
+
+const PlayerListItem = memo(function PlayerListItem({
+  player,
+  position,
+  room,
+  hasSubmittedOrder,
+}: {
+  player: PlayerWithNetWorth;
+  position: number;
+  room: Room;
+  hasSubmittedOrder: boolean;
+}) {
+  return (
+    <PlayerOverviewItem
+      key={player.id}
+      name={player.name}
+      position={position}
+      cash={player.cash}
+      netWorth={player.net_worth}
+      status={room.status}
+      isOrderPhase={room.current_phase === "submitting_orders"}
+      hasSubmittedOrder={hasSubmittedOrder}
+    />
+  );
+});
+
+export function PlayersOverviewList({ roomId }: { roomId: string }) {
+  const { gameState, isLoading, error } = useGameState(roomId);
+  const { room, players, pendingOrders } = gameState;
+
+  if (error) {
+    return (
+      <div className="p-4 text-sm text-red-500 bg-red-50 rounded-lg">
+        Failed to load players: {error.message}
+      </div>
+    );
+  }
+
+  if (!room) {
     return null;
   }
 
   return (
     <div className="space-y-2">
       {players.map((player, index) => (
-        <PlayerOverviewItem
+        <PlayerListItem
           key={player.id}
-          name={player.name}
+          player={player}
           position={index + 1}
-          cash={player.cash}
-          netWorth={player.net_worth}
-          status={room.status}
-          isOrderPhase={room.current_phase === "submitting_orders"}
-          hasSubmittedOrder={orders?.some((o) => o.player_id === player.id)}
+          room={room}
+          hasSubmittedOrder={pendingOrders.has(player.id)}
         />
       ))}
     </div>
