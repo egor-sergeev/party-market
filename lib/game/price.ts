@@ -5,6 +5,8 @@
  * - Impact is higher in thin markets (few stocks owned)
  * - Small orders in liquid markets have minimal impact
  * - Prevents negative or zero prices through natural bounds
+ * - Selling has symmetrical impact to buying
+ * - Includes controlled randomness for market unpredictability
  */
 export function calculateNewStockPrice({
   currentPrice,
@@ -27,12 +29,17 @@ export function calculateNewStockPrice({
   const baseImpact = 2 / (1 + Math.exp(-relativeOrderSize)) - 1;
 
   // Scale impact based on market depth (thinner markets = higher impact)
+  // Increased impact for selling to match buying impact
   const scaledImpact = baseImpact / marketDepth;
 
-  // Apply direction and calculate final price
-  const priceChange = scaledImpact * (isBuy ? 1 : -1);
-  const newPrice = currentPrice * (1 + priceChange);
+  // Apply direction and calculate price multiplier
+  const priceMultiplier = 1 + scaledImpact * (isBuy ? 1 : -1);
 
-  // Round to nearest integer but ensure price stays positive
+  // Add controlled randomness (±25% to the multiplier effect)
+  const randomFactor = 0.75 + Math.random() * 0.5; // Range: 0.75 to 1.25
+  const finalMultiplier = 1 + (priceMultiplier - 1) * randomFactor;
+
+  // Calculate new price and ensure it stays positive
+  const newPrice = currentPrice * finalMultiplier;
   return Math.max(1, Math.round(newPrice));
 }
