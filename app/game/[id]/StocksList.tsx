@@ -24,6 +24,7 @@ export function StocksList({ roomId }: StocksListProps) {
     null
   );
   const [orderType, setOrderType] = useState<"buy" | "sell" | null>(null);
+  const [hasPendingOrder, setHasPendingOrder] = useState(false);
   const [pendingOrderStockId, setPendingOrderStockId] = useState<string | null>(
     null
   );
@@ -80,6 +81,7 @@ export function StocksList({ roomId }: StocksListProps) {
       setStocks(
         transformedStocks.sort((a, b) => b.total_worth - a.total_worth)
       );
+      setHasPendingOrder(!!pendingOrder);
       setPendingOrderStockId(pendingOrder?.stock_id || null);
       setPlayerCash(player?.cash || 0);
     } catch (error) {
@@ -233,14 +235,16 @@ export function StocksList({ roomId }: StocksListProps) {
                     <Button
                       variant="outline"
                       onClick={() => handleOrder(stock, "buy")}
-                      disabled={playerCash < stock.current_price}
+                      disabled={
+                        hasPendingOrder || playerCash < stock.current_price
+                      }
                     >
                       Buy
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => handleOrder(stock, "sell")}
-                      disabled={stock.owned_quantity === 0}
+                      disabled={hasPendingOrder || stock.owned_quantity === 0}
                     >
                       Sell
                     </Button>
