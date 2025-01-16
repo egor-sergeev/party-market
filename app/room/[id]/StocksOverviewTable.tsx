@@ -61,7 +61,8 @@ function useStocksData(roomId: string) {
             )
           `
           )
-          .eq("room_id", roomId);
+          .eq("room_id", roomId)
+          .order("id", { ascending: true }); // Maintain consistent order by id
 
         if (error) throw error;
 
@@ -72,7 +73,7 @@ function useStocksData(roomId: string) {
             new Set(
               stock.player_stocks.map((ps: PlayerStock) => ps.player.name)
             )
-          ).sort(),
+          ),
         }));
 
         setStocks(transformedStocks);

@@ -1,4 +1,4 @@
-export const INITIAL_PLAYER_CASH: number = 1000;
+export const INITIAL_PLAYER_CASH: number = 100;
 export const DEFAULT_ROUNDS: number = 10;
 export const MIN_INITIAL_STOCK_PRICE: number = 10;
 export const MAX_INITIAL_STOCK_PRICE: number = 350;

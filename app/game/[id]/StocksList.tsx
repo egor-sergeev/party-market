@@ -85,7 +85,12 @@ export function StocksList({ roomId }: StocksListProps) {
       }));
 
       setStocks(
-        transformedStocks.sort((a, b) => b.total_worth - a.total_worth)
+        transformedStocks.sort((a, b) => {
+          if (a.total_worth > 0 !== b.total_worth > 0) {
+            return b.total_worth > 0 ? 1 : -1;
+          }
+          return a.id - b.id;
+        })
       );
       setHasPendingOrder(!!pendingOrder);
       setPendingOrderStockId(pendingOrder?.stock_id || null);

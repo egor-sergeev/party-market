@@ -61,14 +61,18 @@ async function fetchRecentOrders(
   supabase: SupabaseClient,
   roomId: string
 ): Promise<RecentOrder[]> {
-  const { data: orders } = await supabase
+  const { data } = await supabase
     .from("orders")
     .select(
       `
       type,
       execution_quantity,
-      players:players!inner (name),
-      stocks:stocks!inner (symbol)
+      players!inner (
+        name
+      ),
+      stocks!inner (
+        symbol
+      )
     `
     )
     .eq("room_id", roomId)
@@ -76,13 +80,14 @@ async function fetchRecentOrders(
     .order("created_at", { ascending: false })
     .limit(20);
 
-  if (!orders) return [];
+  if (!data) return [];
 
-  return orders.map((order) => ({
-    playerName: order.players[0]?.name || "Unknown",
+  // Since we're using inner joins, we know these fields exist
+  return data.map((order: any) => ({
+    playerName: order.players.name,
     type: order.type,
     quantity: order.execution_quantity,
-    symbol: order.stocks[0]?.symbol || "Unknown",
+    symbol: order.stocks.symbol,
   }));
 }
 
@@ -174,15 +179,18 @@ export async function generateEvent(
 
   try {
     const response = await retryInvoke(() =>
-      structuredLlm.invoke({
-        language: "Русский",
-        tone: "матерящийся зумер, знающий все актуальные рофлы",
-        round: round.toString(),
-        totalRounds: totalRounds.toString(),
-        stocks: stocksTable,
-        players: playersTable,
-        orders: ordersText,
-      })
+      structuredLlm.invoke(
+        {
+          language: "Русский",
+          tone: "матерящийся зумер, знающий все актуальные рофлы",
+          round: round.toString(),
+          totalRounds: totalRounds.toString(),
+          stocks: stocksTable,
+          players: playersTable,
+          orders: ordersText,
+        },
+        { runName: "generateEvent" }
+      )
     );
 
     // Map the parsed output to the Event type
@@ -228,7 +236,7 @@ export async function applyEventEffects(
     .select("*")
     .eq("room_id", roomId)
     .eq("round", round)
-    .single();
+    .maybeSingle();
 
   if (eventError) throw eventError;
   if (!event) return;
