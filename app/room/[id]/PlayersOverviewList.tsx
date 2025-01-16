@@ -1,22 +1,14 @@
 "use client";
 
-import { Room } from "@/lib/types/supabase";
+import { PlayerInfo, Room } from "@/lib/types/supabase";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { memo, useCallback, useEffect, useState } from "react";
 import { PlayerOverviewItem } from "./PlayerOverviewItem";
 
-interface PlayerWithNetWorth {
-  id: string;
-  name: string;
-  cash: number;
-  net_worth: number;
-  room_id: string;
-}
-
 interface GameState {
   room: Room | null;
-  players: PlayerWithNetWorth[];
+  players: PlayerInfo[];
   pendingOrders: Set<string>;
 }
 
@@ -95,7 +87,7 @@ function useGameState(roomId: string) {
       const [roomData, playersData, ordersData] = await Promise.all([
         supabase.from("rooms").select().eq("id", roomId).single(),
         supabase
-          .from("players_with_net_worth")
+          .from("player_info")
           .select()
           .eq("room_id", roomId)
           .order("net_worth", { ascending: false })
@@ -142,14 +134,14 @@ const PlayerListItem = memo(function PlayerListItem({
   room,
   hasSubmittedOrder,
 }: {
-  player: PlayerWithNetWorth;
+  player: PlayerInfo;
   position: number;
   room: Room;
   hasSubmittedOrder: boolean;
 }) {
   return (
     <PlayerOverviewItem
-      key={player.id}
+      key={player.user_id}
       name={player.name}
       position={position}
       cash={player.cash}
@@ -181,11 +173,11 @@ export function PlayersOverviewList({ roomId }: { roomId: string }) {
     <div className="space-y-2">
       {players.map((player, index) => (
         <PlayerListItem
-          key={player.id}
+          key={player.user_id}
           player={player}
           position={index + 1}
           room={room}
-          hasSubmittedOrder={pendingOrders.has(player.id)}
+          hasSubmittedOrder={pendingOrders.has(player.user_id)}
         />
       ))}
     </div>

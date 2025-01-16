@@ -1,5 +1,11 @@
+import {
+  DEFAULT_ROUNDS,
+  MAX_INITIAL_DIVIDEND_AMOUNT,
+  MAX_INITIAL_STOCK_PRICE,
+  MIN_INITIAL_DIVIDEND_AMOUNT,
+  MIN_INITIAL_STOCK_PRICE,
+} from "@/lib/game-config";
 import { generateEvent } from "@/lib/game/events";
-import { DEFAULT_ROUNDS } from "@/lib/game-config";
 import type { StockTemplate } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
@@ -37,13 +43,15 @@ export async function POST(
       room_id: params.id,
       name: template.name,
       symbol: template.symbol,
+      description: template.description,
       current_price: Math.floor(
-        template.min_price +
-          Math.random() * (template.max_price - template.min_price)
+        MIN_INITIAL_STOCK_PRICE +
+          Math.random() * (MAX_INITIAL_STOCK_PRICE - MIN_INITIAL_STOCK_PRICE)
       ),
       dividend_amount: Math.floor(
-        template.min_dividend +
-          Math.random() * (template.max_dividend - template.min_dividend)
+        MIN_INITIAL_DIVIDEND_AMOUNT +
+          Math.random() *
+            (MAX_INITIAL_DIVIDEND_AMOUNT - MIN_INITIAL_DIVIDEND_AMOUNT)
       ),
     }));
 

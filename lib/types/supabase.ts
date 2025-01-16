@@ -22,10 +22,8 @@ export interface StockTemplate {
   id: string;
   name: string;
   symbol: string;
-  min_price: number;
-  max_price: number;
-  min_dividend: number;
-  max_dividend: number;
+  kit: string;
+  description: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -35,6 +33,7 @@ export interface Stock {
   room_id: string;
   name: string;
   symbol: string;
+  description: string | null;
   current_price: number;
   dividend_amount: number;
   created_at: string;
@@ -90,4 +89,16 @@ export interface Event {
   description: string;
   effects: StockEffect[];
   created_at: string;
+}
+
+export interface PlayerInfo {
+  room_id: string;
+  user_id: string;
+  name: string;
+  cash: number;
+  net_worth: number;
+  holdings: Array<{
+    symbol: string;
+    quantity: number;
+  }>;
 }
