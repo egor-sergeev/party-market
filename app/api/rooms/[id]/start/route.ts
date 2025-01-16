@@ -5,7 +5,6 @@ import {
   MIN_INITIAL_DIVIDEND_AMOUNT,
   MIN_INITIAL_STOCK_PRICE,
 } from "@/lib/game-config";
-import { generateEvent } from "@/lib/game/events";
 import type { StockTemplate } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
@@ -77,9 +76,6 @@ export async function POST(
       console.error("Failed to update room:", roomError);
       throw roomError;
     }
-
-    // Generate first event
-    await generateEvent(supabase, params.id, 1);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -61,14 +61,14 @@ export async function POST(
       });
     }
 
-    // Generate event for the next round if this is the last phase
-    if (shouldIncrementRound)
-      await generateEvent(supabase, params.id, nextRound);
-
     // Phase-specific validations and handlers
     if (nextPhase === "revealing_event") {
       await applyEventEffects(supabase, params.id, room.current_round);
     } else if (nextPhase === "executing_orders") {
+      // Initiate event generation for the next round
+      if (nextRound < room.total_rounds)
+        generateEvent(supabase, params.id, nextRound + 1, room.total_rounds);
+
       await executeOrders(supabase, params.id);
     } else if (nextPhase === "paying_dividends") {
       await payAllDividends(supabase, params.id);

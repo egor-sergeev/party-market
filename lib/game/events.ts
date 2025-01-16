@@ -1,122 +1,221 @@
-import { Stock, StockEffect } from "@/lib/types/supabase";
+import { promptTemplate } from "@/lib/game/prompts";
+import { Stock } from "@/lib/types/supabase";
+import { formatMarkdownTable, retryInvoke, TableColumn } from "@/lib/utils";
+import { ChatOpenAI } from "@langchain/openai";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
-interface EventTemplate {
-  title: string;
-  description: string;
-  getEffects: (stocks: Stock[]) => StockEffect[];
+const eventOutputSchema = z.object({
+  analysis: z
+    .string()
+    .describe("1-2 sentences analysis of game state and players leaderboard"),
+  action: z
+    .string()
+    .describe("1-2 sentences describing how you want to affect the market"),
+  title: z.string().describe("Event title"),
+  description: z.string().describe("Event description"),
+  stock_effects: z
+    .array(
+      z.object({
+        stock_symbol: z.string().describe("Symbol of the affected stock"),
+        effect_type: z
+          .enum(["price_change", "dividend_change"])
+          .describe("Type of effect: price_change or dividend_change"),
+        amount: z.number().describe("Absolute amount of change"),
+      })
+    )
+    .describe("List of effects on stocks"),
+});
+
+interface RecentOrder {
+  playerName: string;
+  type: string;
+  quantity: number;
+  symbol: string;
 }
 
-const EVENT_TEMPLATES: EventTemplate[] = [
-  {
-    title: "Tech Innovation Breakthrough",
-    description:
-      "A revolutionary AI technology sparks investor interest in tech companies",
-    getEffects: (stocks) => {
-      const techStocks = stocks.filter((s) =>
-        ["QUANT", "DRM", "MEMQ"].includes(s.symbol)
-      );
-      return techStocks.map((stock) => ({
-        type: "price_change",
-        stock_id: stock.id,
-        amount: Math.floor(stock.current_price * 0.2),
-      }));
-    },
-  },
-  {
-    title: "Supply Chain Disruption",
-    description:
-      "Global logistics issues affect manufacturing and delivery capabilities",
-    getEffects: (stocks) => {
-      const affectedStocks = stocks.filter((s) =>
-        ["SPACE", "ROBO", "CLD"].includes(s.symbol)
-      );
-      return affectedStocks.map((stock) => ({
-        type: "price_change",
-        stock_id: stock.id,
-        amount: Math.floor(stock.current_price * -0.15),
-      }));
-    },
-  },
-  {
-    title: "Consumer Spending Surge",
-    description:
-      "Unexpected rise in consumer confidence boosts retail and entertainment sectors",
-    getEffects: (stocks) => {
-      const consumerStocks = stocks.filter((s) =>
-        ["CSM", "MEMQ", "UCRN"].includes(s.symbol)
-      );
-      return consumerStocks.map((stock) => ({
-        type: "dividend_change",
-        stock_id: stock.id,
-        amount: Math.floor(stock.dividend_amount * 0.5),
-      }));
-    },
-  },
-  {
-    title: "Regulatory Changes",
-    description: "New government regulations impact multiple industry sectors",
-    getEffects: (stocks) => {
-      const affectedStocks = stocks.filter((s) =>
-        ["DNS", "DRM", "ROBO"].includes(s.symbol)
-      );
-      return affectedStocks.flatMap((stock) => [
-        {
-          type: "price_change",
-          stock_id: stock.id,
-          amount: Math.floor(stock.current_price * -0.1),
-        },
-        {
-          type: "dividend_change",
-          stock_id: stock.id,
-          amount: Math.floor(stock.dividend_amount * -0.3),
-        },
-      ]);
-    },
-  },
-  {
-    title: "Market Innovation Fund",
-    description: "Government announces support for innovative companies",
-    getEffects: (stocks) => {
-      const techStocks = stocks.filter((s) =>
-        ["QUANT", "DNS", "ROBO"].includes(s.symbol)
-      );
-      return techStocks.map((stock) => ({
-        type: "dividend_change",
-        stock_id: stock.id,
-        amount: Math.floor(stock.dividend_amount * 0.4),
-      }));
-    },
-  },
-];
+async function fetchStocks(
+  supabase: SupabaseClient,
+  roomId: string
+): Promise<Stock[]> {
+  const { data: stocks } = await supabase
+    .from("stocks")
+    .select("*")
+    .eq("room_id", roomId);
+
+  if (!stocks) throw new Error("Failed to fetch stocks");
+  return stocks;
+}
+
+async function fetchPlayers(supabase: SupabaseClient, roomId: string) {
+  const { data: players } = await supabase
+    .from("player_info")
+    .select("*")
+    .eq("room_id", roomId);
+
+  if (!players) throw new Error("Failed to fetch players");
+  return players;
+}
+
+async function fetchRecentOrders(
+  supabase: SupabaseClient,
+  roomId: string
+): Promise<RecentOrder[]> {
+  const { data: orders } = await supabase
+    .from("orders")
+    .select(
+      `
+      type,
+      execution_quantity,
+      players:players!inner (name),
+      stocks:stocks!inner (symbol)
+    `
+    )
+    .eq("room_id", roomId)
+    .eq("status", "executed")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (!orders) return [];
+
+  return orders.map((order) => ({
+    playerName: order.players[0]?.name || "Unknown",
+    type: order.type,
+    quantity: order.execution_quantity,
+    symbol: order.stocks[0]?.symbol || "Unknown",
+  }));
+}
+
+function formatStocksTable(stocks: Stock[]) {
+  const columns: TableColumn[] = [
+    { key: "symbol", title: "Symbol" },
+    { key: "name", title: "Name" },
+    { key: "description", title: "Description" },
+    { key: "current_price", title: "Current price" },
+    { key: "dividend_amount", title: "Current dividends per round" },
+  ];
+
+  const tableData = stocks.map((s) => ({
+    symbol: s.symbol,
+    name: s.name,
+    description: s.description || "",
+    current_price: s.current_price,
+    dividend_amount: s.dividend_amount,
+  }));
+
+  return formatMarkdownTable(columns, tableData);
+}
+
+function formatPlayersTable(players: any[], stocks: Stock[]) {
+  const columns: TableColumn[] = [
+    { key: "name", title: "Name" },
+    { key: "cash", title: "Current cash" },
+    { key: "net_worth", title: "Net worth (cash + stocks)" },
+    { key: "holdings", title: "Stocks owned" },
+  ];
+
+  const tableData = players.map((p) => {
+    const holdings = p.holdings || [];
+    const holdingsText = holdings
+      .map((h: any) => `${h.quantity} \`${h.symbol}\``)
+      .join(", ");
+
+    return {
+      name: p.name,
+      cash: p.cash,
+      net_worth: p.net_worth,
+      holdings: holdingsText,
+    };
+  });
+
+  return formatMarkdownTable(columns, tableData);
+}
+
+function formatOrders(orders: RecentOrder[]) {
+  if (!orders.length) return "";
+
+  return orders
+    .map(
+      (o) =>
+        `- \`${o.playerName}\` ${o.type === "buy" ? "bought" : "sold"} ${
+          o.quantity
+        } \`${o.symbol}\``
+    )
+    .join("\n");
+}
 
 export async function generateEvent(
   supabase: SupabaseClient,
   roomId: string,
-  round: number
+  round: number,
+  totalRounds: number
 ) {
-  const { data: stocks, error: stocksError } = await supabase
-    .from("stocks")
-    .select("*, rooms(code)")
-    .eq("room_id", roomId);
+  // Get game state in parallel
+  const [stocks, players, recentOrders] = await Promise.all([
+    fetchStocks(supabase, roomId),
+    fetchPlayers(supabase, roomId),
+    fetchRecentOrders(supabase, roomId),
+  ]);
 
-  if (stocksError) throw stocksError;
-  if (!stocks?.length) throw new Error("No stocks found for room");
+  // Format data for prompt
+  const stocksTable = formatStocksTable(stocks);
+  const playersTable = formatPlayersTable(players, stocks);
+  const ordersText = formatOrders(recentOrders);
 
-  const template =
-    EVENT_TEMPLATES[Math.floor(Math.random() * EVENT_TEMPLATES.length)];
-
-  const effects = template.getEffects(stocks);
-
-  const { error: eventError } = await supabase.from("events").insert({
-    room_id: roomId,
-    round: round,
-    title: template.title,
-    description: template.description,
-    effects: effects,
+  const llm = new ChatOpenAI({
+    modelName: "gpt-4o",
+    temperature: 0.7,
   });
+  const structuredLlm = promptTemplate.pipe(
+    llm.withStructuredOutput(eventOutputSchema, {
+      name: "newEvent",
+    })
+  );
 
-  if (eventError) throw eventError;
+  try {
+    const response = await retryInvoke(() =>
+      structuredLlm.invoke({
+        language: "Русский",
+        tone: "матерящийся зумер, знающий все актуальные рофлы",
+        round: round.toString(),
+        totalRounds: totalRounds.toString(),
+        stocks: stocksTable,
+        players: playersTable,
+        orders: ordersText,
+      })
+    );
+
+    // Map the parsed output to the Event type
+    const stocksById = stocks.reduce(
+      (acc, s) => ({ ...acc, [s.symbol]: s }),
+      {} as Record<string, Stock>
+    );
+
+    const effects = response.stock_effects.map((effect) => ({
+      type: effect.effect_type,
+      stock_id: stocksById[effect.stock_symbol].id,
+      amount: effect.amount,
+    }));
+
+    const event = {
+      room_id: roomId,
+      round,
+      title: response.title,
+      description: response.description,
+      effects,
+    };
+
+    const { error: insertError } = await supabase.from("events").insert(event);
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    return event;
+  } catch (error) {
+    console.error("Failed to generate event after all retries:", error);
+    throw error;
+  }
 }
 
 export async function applyEventEffects(
@@ -126,7 +225,7 @@ export async function applyEventEffects(
 ) {
   const { data: event, error: eventError } = await supabase
     .from("events")
-    .select("*, rooms(code)")
+    .select("*")
     .eq("room_id", roomId)
     .eq("round", round)
     .single();
