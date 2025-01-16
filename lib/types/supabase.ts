@@ -71,6 +71,8 @@ export interface Order {
   requested_price_total: number;
   execution_quantity: number | null;
   execution_price_total: number | null;
+  stock_price_before: number | null;
+  stock_price_after: number | null;
   status: OrderStatus;
   created_at: string;
 }

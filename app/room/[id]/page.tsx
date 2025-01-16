@@ -1,77 +1,44 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { EventCard } from "./EventCard";
+import { OrdersHistory } from "./OrdersHistory";
 import { PlayersOverviewList } from "./PlayersOverviewList";
 import { ProgressControl } from "./ProgressControl";
 import { RoomCode } from "./RoomCode";
 import { StocksOverviewTable } from "./StocksOverviewTable";
 
-interface RoomPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function RoomPage({ params: { id } }: RoomPageProps) {
+export default async function RoomPage({ params }: { params: { id: string } }) {
   const supabase = createServerComponentClient({ cookies });
+
   const { data: room } = await supabase
     .from("rooms")
-    .select("code")
-    .eq("id", id)
+    .select()
+    .eq("id", params.id)
     .single();
 
   if (!room) {
-    notFound();
+    redirect("/");
   }
 
   return (
-    <>
-      <div className="space-y-6 pb-24">
-        <div className="container border-b pb-4">
-          <h1 className="text-2xl font-bold">
-            Room Code: <RoomCode code={room.code} />
-          </h1>
-        </div>
-
-        <div className="container grid grid-cols-12 gap-6">
-          {/* Left panel - Players and QR code */}
-          <div className="col-span-4 space-y-6">
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold">Players</h2>
-              <PlayersOverviewList roomId={id} />
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold">Join Game</h2>
-              {/* TODO: Add JoinQrCode component */}
-            </section>
-          </div>
-
-          {/* Center panel - Game progress and stocks */}
-          <div className="col-span-5 space-y-6">
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold">Stocks</h2>
-              <StocksOverviewTable roomId={id} />
-            </section>
-          </div>
-
-          {/* Right panel - Events and settings */}
-          <div className="col-span-3 space-y-6">
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold">Current Event</h2>
-              <EventCard roomId={id} />
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="text-lg font-semibold">Settings</h2>
-              {/* TODO: Add RoomSettings component */}
-            </section>
-          </div>
-        </div>
+    <div className="container py-8 space-y-8 min-h-screen pb-48">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Game Room</h1>
+        <RoomCode code={room.code} />
       </div>
 
-      <ProgressControl roomId={id} />
-    </>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <EventCard roomId={params.id} />
+          <StocksOverviewTable roomId={params.id} />
+        </div>
+        <div className="space-y-8">
+          <PlayersOverviewList roomId={params.id} />
+          <OrdersHistory roomId={params.id} />
+        </div>
+      </div>
+      <ProgressControl roomId={params.id} />
+    </div>
   );
 }

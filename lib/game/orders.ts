@@ -70,11 +70,13 @@ async function executeOrder(
     };
   }
 
+  let updatedPrice = currentPrice;
+
   if (result.quantity > 0) {
     const quantityDelta =
       order.type === "buy" ? result.quantity : -result.quantity;
     const cashDelta = order.type === "buy" ? -result.total : result.total;
-    const updatedPrice = calculateNewStockPrice({
+    updatedPrice = calculateNewStockPrice({
       currentPrice,
       orderQuantity: result.quantity,
       totalStocksOwned,
@@ -113,6 +115,8 @@ async function executeOrder(
       status: result.quantity > 0 ? "executed" : "failed",
       execution_quantity: result.quantity,
       execution_price_total: result.total,
+      stock_price_before: currentPrice,
+      stock_price_after: updatedPrice,
     })
     .eq("id", order.id);
 }
