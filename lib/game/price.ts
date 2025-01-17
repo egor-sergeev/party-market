@@ -19,24 +19,29 @@ export function calculateNewStockPrice({
   totalStocksOwned: number;
   isBuy: boolean;
 }): number {
+  const isRandom = true;
   // Market depth factor: higher when few stocks are owned
-  const marketDepth = Math.log(totalStocksOwned + Math.E);
+  const effectiveTotal = isBuy
+    ? totalStocksOwned
+    : totalStocksOwned - orderQuantity;
+  const marketDepth = Math.log10(effectiveTotal + 10);
 
   // Order size relative to market depth
-  const relativeOrderSize = orderQuantity / (totalStocksOwned + 1);
+  const relativeOrderSize = orderQuantity / (effectiveTotal + 1);
 
   // Base impact using sigmoid function to naturally limit extreme values
   const baseImpact = 2 / (1 + Math.exp(-relativeOrderSize)) - 1;
 
   // Scale impact based on market depth (thinner markets = higher impact)
-  // Increased impact for selling to match buying impact
   const scaledImpact = baseImpact / marketDepth;
+  console.log("scaledImpact", scaledImpact);
 
   // Apply direction and calculate price multiplier
-  const priceMultiplier = 1 + scaledImpact * (isBuy ? 1 : -1);
+  const priceMultiplier = 1 + scaledImpact * (isBuy ? 1 : -0.5);
+  console.log("priceMultiplier", priceMultiplier);
 
   // Add controlled randomness (±25% to the multiplier effect)
-  const randomFactor = 0.75 + Math.random() * 0.5; // Range: 0.75 to 1.25
+  const randomFactor = isRandom ? 0.75 + Math.random() * 0.5 : 1; // Range: 0.75 to 1.25
   const finalMultiplier = 1 + (priceMultiplier - 1) * randomFactor;
 
   // Calculate new price and ensure it stays positive
