@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { getPhaseInfo } from "@/lib/game/phases";
 import { advancePhase, startRoom } from "@/lib/rooms";
 import { Room } from "@/lib/types/supabase";
@@ -19,9 +20,9 @@ function useRoomProgress(roomId: string) {
   const [pendingOrders, setPendingOrders] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const supabase = createClientComponentClient();
   const router = useRouter();
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -46,14 +47,17 @@ function useRoomProgress(roomId: string) {
       setRoom(roomData.data);
       setPlayerCount(allPlayerIds.size);
       setPendingOrders(submittedPlayerIds);
-      setError(null);
     } catch (error) {
-      setError(error as Error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching game state",
+        description: (error as Error).message,
+      });
       console.error("Error fetching game state:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [roomId, supabase]);
+  }, [roomId, supabase, toast]);
 
   useEffect(() => {
     fetchData();
@@ -102,7 +106,6 @@ function useRoomProgress(roomId: string) {
 
     try {
       setIsProcessing(true);
-      setError(null);
 
       if (room.status === "WAITING") {
         await startRoom(roomId);
@@ -115,11 +118,15 @@ function useRoomProgress(roomId: string) {
       router.refresh();
     } catch (error) {
       console.error("Error advancing game:", error);
-      setError(error as Error);
+      toast({
+        variant: "destructive",
+        title: "Error advancing game",
+        description: (error as Error).message,
+      });
     } finally {
       setIsProcessing(false);
     }
-  }, [room, roomId, router, isProcessing]);
+  }, [room, roomId, router, isProcessing, toast]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -151,7 +158,6 @@ function useRoomProgress(roomId: string) {
     pendingOrders,
     isLoading,
     isProcessing,
-    error,
     handleAdvance,
   };
 }
@@ -165,7 +171,6 @@ export const ProgressControl = memo(function ProgressControl({
     pendingOrders,
     isLoading,
     isProcessing,
-    error,
     handleAdvance,
   } = useRoomProgress(roomId);
 
@@ -183,52 +188,12 @@ export const ProgressControl = memo(function ProgressControl({
       : "Start Game";
   };
 
-  const getDisabledReason = () => {
-    if (!room || isLoading) return null;
-
-    if (room.status === "WAITING" && playerCount < 2) {
-      return "Waiting for more players to join...";
-    }
-    if (
-      room.status === "IN_PROGRESS" &&
-      room.current_phase === "submitting_orders" &&
-      pendingOrders.size < playerCount
-    ) {
-      return "Waiting for all players to submit orders...";
-    }
-    return null;
-  };
-
-  const disabledReason = getDisabledReason();
-  const isDisabled = Boolean(disabledReason) || isLoading || !room;
+  const isDisabled = isLoading || !room;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
       <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-2">
-        <div className="text-sm text-muted-foreground h-5">
-          {!isLoading &&
-            room?.status === "IN_PROGRESS" &&
-            room.current_phase && (
-              <>
-                <span className="font-medium">
-                  {getPhaseInfo(room.current_phase)?.label}
-                </span>
-                {room.current_phase === "submitting_orders" && (
-                  <>
-                    {" "}
-                    • {pendingOrders.size} of {playerCount} orders submitted
-                  </>
-                )}
-              </>
-            )}
-        </div>
-
-        <div className="w-full max-w-2xl mx-auto relative">
-          {error && (
-            <div className="absolute -top-8 left-0 right-0 text-sm text-red-500 text-center">
-              {error.message}
-            </div>
-          )}
+        <div className="w-full max-w-2xl mx-auto">
           <Button
             size="lg"
             disabled={isDisabled}
@@ -249,11 +214,22 @@ export const ProgressControl = memo(function ProgressControl({
             </span>
           </Button>
         </div>
-
-        <div className="h-5 text-sm">
-          {disabledReason && (
-            <div className="text-muted-foreground">{disabledReason}</div>
-          )}
+        <div className="text-sm text-muted-foreground h-5">
+          {!isLoading &&
+            room?.status === "IN_PROGRESS" &&
+            room.current_phase && (
+              <>
+                <span className="font-medium">
+                  {getPhaseInfo(room.current_phase)?.label}
+                </span>
+                {room.current_phase === "submitting_orders" && (
+                  <>
+                    {" "}
+                    • {pendingOrders.size} of {playerCount} orders submitted
+                  </>
+                )}
+              </>
+            )}
         </div>
       </div>
     </div>

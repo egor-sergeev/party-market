@@ -153,24 +153,34 @@ const PlayerListItem = memo(function PlayerListItem({
   );
 });
 
+const LoadingState = () => (
+  <div className="space-y-2">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="h-[42px] rounded-lg bg-muted/50 animate-pulse" />
+    ))}
+  </div>
+);
+
 export function PlayersOverviewList({ roomId }: { roomId: string }) {
   const { gameState, isLoading, error } = useGameState(roomId);
   const { room, players, pendingOrders } = gameState;
 
   if (error) {
     return (
-      <div className="p-4 text-sm text-red-500 bg-red-50 rounded-lg">
-        Failed to load players: {error.message}
+      <div className="rounded-lg border border-red-200 bg-red-50/5 px-3 py-2">
+        <div className="text-sm text-red-500">
+          Failed to load players: {error.message}
+        </div>
       </div>
     );
   }
 
-  if (!room) {
-    return null;
+  if (!room || isLoading) {
+    return <LoadingState />;
   }
 
   return (
-    <div className="space-y-2">
+    <div className="">
       {players.map((player, index) => (
         <PlayerListItem
           key={player.user_id}

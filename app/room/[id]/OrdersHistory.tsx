@@ -32,6 +32,7 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
         `
         )
         .eq("room_id", roomId)
+        .in("status", ["executed", "failed"])
         .order("created_at", { ascending: false })
         .limit(10);
 
