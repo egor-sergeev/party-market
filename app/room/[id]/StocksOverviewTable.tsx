@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -27,7 +28,7 @@ interface StockWithHolders extends Stock {
   holders: string[];
 }
 
-function PriceDiff({
+function DiffBadge({
   current,
   previous,
 }: {
@@ -42,7 +43,7 @@ function PriceDiff({
     <Badge
       variant="outline"
       className={cn(
-        "ml-2 text-white border-0 h-5 px-1.5 text-xs",
+        "text-white border-0 h-5 px-1.5 text-xs whitespace-nowrap",
         diff > 0 ? "bg-green-500" : "bg-red-500"
       )}
     >
@@ -56,7 +57,59 @@ function PriceDiff({
   );
 }
 
-// Memoized row component to prevent unnecessary re-renders
+const StockSymbol = memo(function StockSymbol({
+  symbol,
+  name,
+  description,
+}: {
+  symbol: string;
+  name: string;
+  description: string;
+}) {
+  return (
+    <div className="flex gap-3 items-center">
+      <div className="w-12 h-12 rounded-lg bg-muted/50 border border-border flex items-center justify-center text-2xl">
+        {symbol}
+      </div>
+      <div className="space-y-1.5">
+        <div className="font-medium text-lg leading-none">{name}</div>
+        <div className="text-sm text-muted-foreground leading-none">
+          {description}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const PlayersList = memo(function PlayersList({
+  holders,
+}: {
+  holders: string[];
+}) {
+  const maxVisible = 8;
+  const hasMore = holders.length > maxVisible;
+  const visibleHolders = hasMore ? holders.slice(0, maxVisible) : holders;
+
+  return (
+    <div className="flex items-center">
+      <div className="flex -space-x-2">
+        {visibleHolders.map((name) => (
+          <Avatar key={name} className="h-8 w-8 border-2 border-background">
+            <AvatarFallback className="bg-gray-200 text-sm font-medium text-primary">
+              {name[0]}
+            </AvatarFallback>
+          </Avatar>
+        ))}
+      </div>
+      {hasMore && (
+        <span className="ml-2 text-sm text-muted-foreground">
+          +{holders.length - maxVisible}
+        </span>
+      )}
+    </div>
+  );
+});
+
 const StockRow = memo(function StockRow({
   stock,
 }: {
@@ -64,27 +117,34 @@ const StockRow = memo(function StockRow({
 }) {
   return (
     <TableRow>
-      <TableCell className="font-medium">{stock.symbol}</TableCell>
-      <TableCell>{stock.name}</TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end">
-          ${stock.current_price}
-          <PriceDiff
-            current={stock.current_price}
-            previous={stock.previous_price}
-          />
-        </div>
+      <TableCell>
+        <StockSymbol
+          symbol={stock.symbol}
+          name={stock.name}
+          description={stock.description || ""}
+        />
       </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end">
-          ${stock.dividend_amount}
-          <PriceDiff
-            current={stock.dividend_amount}
-            previous={stock.previous_dividends}
-          />
-        </div>
+      <TableCell className="text-right pr-1">
+        <span className="text-lg tabular-nums">${stock.current_price}</span>
       </TableCell>
-      <TableCell>{stock.holders.join(", ")}</TableCell>
+      <TableCell className="pl-1">
+        <DiffBadge
+          current={stock.current_price}
+          previous={stock.previous_price}
+        />
+      </TableCell>
+      <TableCell className="text-right pr-1">
+        <span className="text-lg tabular-nums">${stock.dividend_amount}</span>
+      </TableCell>
+      <TableCell className="pl-1">
+        <DiffBadge
+          current={stock.dividend_amount}
+          previous={stock.previous_dividends}
+        />
+      </TableCell>
+      <TableCell>
+        <PlayersList holders={stock.holders} />
+      </TableCell>
     </TableRow>
   );
 });
@@ -177,11 +237,12 @@ export function StocksOverviewTable({ roomId }: { roomId: string }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Symbol</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          <TableHead className="text-right">Dividend</TableHead>
-          <TableHead>Holders</TableHead>
+          <TableHead className="text-lg">Stock</TableHead>
+          <TableHead className="text-lg text-right">Price</TableHead>
+          <TableHead />
+          <TableHead className="text-lg text-right">Dividend</TableHead>
+          <TableHead />
+          <TableHead className="text-lg min-w-[150px]">Holders</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
