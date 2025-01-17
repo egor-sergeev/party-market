@@ -4,6 +4,7 @@ import {
   MAX_INITIAL_STOCK_PRICE,
   MIN_INITIAL_DIVIDEND_AMOUNT,
   MIN_INITIAL_STOCK_PRICE,
+  NUMBER_OF_STOCKS,
 } from "@/lib/game-config";
 import type { StockTemplate } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
@@ -38,7 +39,11 @@ export async function POST(
     }
 
     // Generate stocks for the room
-    const stocks = templates.map((template: StockTemplate) => ({
+    const randomTemplates = templates
+      .sort(() => Math.random() - 0.5)
+      .slice(0, NUMBER_OF_STOCKS);
+
+    const stocks = randomTemplates.map((template: StockTemplate) => ({
       room_id: params.id,
       name: template.name,
       symbol: template.symbol,
