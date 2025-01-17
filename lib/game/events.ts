@@ -12,8 +12,6 @@ const eventOutputSchema = z.object({
   action: z
     .string()
     .describe("1-2 sentences describing how you want to affect the market"),
-  title: z.string().describe("Event title"),
-  description: z.string().describe("Event description"),
   stock_effects: z
     .array(
       z.object({
@@ -25,6 +23,8 @@ const eventOutputSchema = z.object({
       })
     )
     .describe("List of effects on stocks"),
+  title: z.string().describe("Event title"),
+  description: z.string().describe("Event description"),
 });
 
 interface RecentOrder {

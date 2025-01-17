@@ -30,7 +30,9 @@ export default async function RoomPage({ params }: { params: { id: string } }) {
         </div>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold"># {room.code}</h2>
+            <div className="text-2xl font-medium">
+              Round {room.current_round} / {room.total_rounds}
+            </div>
             <RoomCode code={room.code} />
           </div>
           <PlayersOverviewList roomId={params.id} />
