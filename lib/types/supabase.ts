@@ -35,7 +35,9 @@ export interface Stock {
   symbol: string;
   description: string | null;
   current_price: number;
+  previous_price: number | null;
   dividend_amount: number;
+  previous_dividends: number | null;
   created_at: string;
   updated_at: string;
 }

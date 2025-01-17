@@ -113,53 +113,13 @@ export function EventCard({ roomId }: EventCardProps) {
   const shouldShowEffects = (room: Room) =>
     room.status === "IN_PROGRESS" && room.current_phase !== "submitting_orders";
 
-  const formatEffect = (effect: Event["effects"][number]) => {
-    const stock = stocks[effect.stock_id];
-    if (!stock) return null;
-
-    const change = effect.amount;
-    const isPositive = change > 0;
-    const changeText = isPositive ? `+${change}` : change;
-
-    return (
-      <div
-        key={`${effect.stock_id}-${effect.type}`}
-        className="flex items-center justify-between text-sm"
-      >
-        <span>{stock.symbol}</span>
-        <span
-          className={
-            isPositive
-              ? "text-green-500 font-medium"
-              : "text-red-500 font-medium"
-          }
-        >
-          {effect.type === "price_change" ? "$" : ""}
-          {changeText}
-          {effect.type === "dividend_change" ? " dividend" : ""}
-        </span>
-      </div>
-    );
-  };
-
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{event.title}</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl">{event.title}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{event.description}</p>
-
-        {shouldShowEffects(room) ? (
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Effects:</p>
-            <div className="space-y-1">{event.effects.map(formatEffect)}</div>
-          </div>
-        ) : (
-          <p className="text-sm italic text-muted-foreground">
-            Effects will be revealed after all orders are submitted
-          </p>
-        )}
+      <CardContent className="">
+        <p className="text-muted-foreground">{event.description}</p>
       </CardContent>
     </Card>
   );

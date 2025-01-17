@@ -188,7 +188,11 @@ export const ProgressControl = memo(function ProgressControl({
       : "Start Game";
   };
 
-  const isDisabled = isLoading || !room;
+  const isDisabled = isLoading || !room || (
+    room.status === "IN_PROGRESS" && 
+    room.current_phase === "submitting_orders" && 
+    pendingOrders.size < playerCount
+  );
 
   return (
     <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">

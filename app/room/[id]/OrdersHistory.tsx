@@ -123,7 +123,7 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
                 {getOrderStatus(order) === "partial" && (
                   <div className="text-xs text-yellow-600">
                     Requested: {order.requested_quantity} @ $
-                    {order.requested_price_total}
+                    {order.requested_price_total / order.requested_quantity}
                   </div>
                 )}
               </div>

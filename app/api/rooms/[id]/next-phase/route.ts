@@ -61,6 +61,16 @@ export async function POST(
       });
     }
 
+    // Store previous values when moving to the next round
+    if (shouldIncrementRound) {
+      const { error: updateStocksError } = await supabase.rpc(
+        "update_stocks_previous_values",
+        { p_room_id: params.id }
+      );
+
+      if (updateStocksError) throw updateStocksError;
+    }
+
     // Phase-specific validations and handlers
     if (nextPhase === "revealing_event") {
       await applyEventEffects(supabase, params.id, room.current_round);

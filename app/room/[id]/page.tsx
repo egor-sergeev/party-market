@@ -23,17 +23,16 @@ export default async function RoomPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="container py-8 space-y-8 min-h-screen pb-48">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Game Room</h1>
-        <RoomCode code={room.code} />
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <EventCard roomId={params.id} />
           <StocksOverviewTable roomId={params.id} />
         </div>
-        <div className="space-y-8">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold"># {room.code}</h2>
+            <RoomCode code={room.code} />
+          </div>
           <PlayersOverviewList roomId={params.id} />
           <OrdersHistory roomId={params.id} />
         </div>
