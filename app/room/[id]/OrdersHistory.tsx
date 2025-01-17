@@ -15,9 +15,7 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
   const [visibleOrders, setVisibleOrders] = useState<OrderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const lastUpdatedRef = useRef<string>(
-    new Date("2025-01-17T00:00:00Z").toISOString()
-  );
+  const lastUpdatedRef = useRef<string>(new Date().toISOString());
   const fetchTimeoutRef = useRef<NodeJS.Timeout>();
   const supabase = createClientComponentClient();
 
