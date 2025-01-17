@@ -54,6 +54,14 @@ export default function JoinPage() {
         console.error("Failed to update user metadata:", updateError);
       }
 
+      if (!user) {
+        form.setError("root", {
+          message:
+            "Failed to join room. Please disable VPN or other connection blocking services",
+        });
+        return;
+      }
+
       const { data: room, error: roomError } = await supabase
         .from("rooms")
         .select("id")
@@ -66,14 +74,20 @@ export default function JoinPage() {
       }
 
       // Upsert player record
-      const { error: playerError } = await supabase.from("players").upsert({
-        user_id: user?.id,
-        room_id: room.id,
-        name: values.name,
-        cash: INITIAL_PLAYER_CASH,
-        previous_cash: INITIAL_PLAYER_CASH,
-        previous_net_worth: INITIAL_PLAYER_CASH,
-      });
+      const { error: playerError } = await supabase.from("players").upsert(
+        {
+          user_id: user.id,
+          room_id: room.id,
+          name: values.name,
+          cash: INITIAL_PLAYER_CASH,
+          previous_cash: INITIAL_PLAYER_CASH,
+          previous_net_worth: INITIAL_PLAYER_CASH,
+        },
+        {
+          onConflict: "user_id,room_id",
+          ignoreDuplicates: false,
+        }
+      );
 
       if (playerError) {
         form.setError("root", { message: "Failed to join room" });
