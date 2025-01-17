@@ -28,7 +28,7 @@ export default async function RoomPage({ params }: { params: { id: string } }) {
           <EventCard roomId={params.id} />
           <StocksOverviewTable roomId={params.id} />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="text-2xl font-medium">
               Round {room.current_round} / {room.total_rounds}

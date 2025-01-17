@@ -71,6 +71,8 @@ export default function JoinPage() {
         room_id: room.id,
         name: values.name,
         cash: INITIAL_PLAYER_CASH,
+        previous_cash: INITIAL_PLAYER_CASH,
+        previous_net_worth: INITIAL_PLAYER_CASH,
       });
 
       if (playerError) {

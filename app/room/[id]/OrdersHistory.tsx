@@ -148,7 +148,7 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Order History</h2>
+      <h2 className="text-lg font-medium">Order History</h2>
       <div className="space-y-2 max-h-[600px] overflow-y-auto">
         {visibleOrders.map((order) => (
           <div

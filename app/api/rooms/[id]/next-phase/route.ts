@@ -63,12 +63,15 @@ export async function POST(
 
     // Store previous values when moving to the next round
     if (shouldIncrementRound) {
-      const { error: updateStocksError } = await supabase.rpc(
-        "update_stocks_previous_values",
-        { p_room_id: params.id }
-      );
+      const [stocksUpdate, playersUpdate] = await Promise.all([
+        supabase.rpc("update_stocks_previous_values", { p_room_id: params.id }),
+        supabase.rpc("update_players_previous_values", {
+          p_room_id: params.id,
+        }),
+      ]);
 
-      if (updateStocksError) throw updateStocksError;
+      if (stocksUpdate.error) throw stocksUpdate.error;
+      if (playersUpdate.error) throw playersUpdate.error;
     }
 
     // Phase-specific validations and handlers

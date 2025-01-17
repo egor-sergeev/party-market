@@ -1,6 +1,5 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Stock } from "@/lib/types/supabase";
 import { cn } from "@/lib/utils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -94,11 +94,12 @@ const PlayersList = memo(function PlayersList({
     <div className="flex items-center">
       <div className="flex -space-x-2">
         {visibleHolders.map((name) => (
-          <Avatar key={name} className="h-8 w-8 border-2 border-background">
-            <AvatarFallback className="bg-gray-200 text-sm font-medium text-primary">
-              {name[0]}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar
+            key={name}
+            name={name}
+            className="h-8 w-8 border-2 border-background"
+            fallbackClassName="bg-gray-200 text-sm font-medium text-primary"
+          />
         ))}
       </div>
       {hasMore && (

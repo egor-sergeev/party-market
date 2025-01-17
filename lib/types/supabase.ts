@@ -47,6 +47,8 @@ export interface Player {
   room_id: string;
   name: string;
   cash: number;
+  previous_cash: number | null;
+  previous_net_worth: number | null;
   created_at: string;
 }
 
@@ -102,8 +104,11 @@ export interface PlayerInfo {
   name: string;
   cash: number;
   net_worth: number;
+  previous_cash: number | null;
+  previous_net_worth: number | null;
   holdings: Array<{
     symbol: string;
     quantity: number;
   }>;
+  created_at: string;
 }

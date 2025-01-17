@@ -1,9 +1,10 @@
 "use client";
 
+import { Table, TableBody } from "@/components/ui/table";
 import { PlayerInfo, Room } from "@/lib/types/supabase";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { memo, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PlayerOverviewItem } from "./PlayerOverviewItem";
 
 interface GameState {
@@ -128,31 +129,6 @@ function useGameState(roomId: string) {
   return { gameState, isLoading, error };
 }
 
-const PlayerListItem = memo(function PlayerListItem({
-  player,
-  position,
-  room,
-  hasSubmittedOrder,
-}: {
-  player: PlayerInfo;
-  position: number;
-  room: Room;
-  hasSubmittedOrder: boolean;
-}) {
-  return (
-    <PlayerOverviewItem
-      key={player.user_id}
-      name={player.name}
-      position={position}
-      cash={player.cash}
-      netWorth={player.net_worth}
-      status={room.status}
-      isOrderPhase={room.current_phase === "submitting_orders"}
-      hasSubmittedOrder={hasSubmittedOrder}
-    />
-  );
-});
-
 const LoadingState = () => (
   <div className="space-y-2">
     {[...Array(4)].map((_, i) => (
@@ -180,16 +156,18 @@ export function PlayersOverviewList({ roomId }: { roomId: string }) {
   }
 
   return (
-    <div className="">
-      {players.map((player, index) => (
-        <PlayerListItem
-          key={player.user_id}
-          player={player}
-          position={index + 1}
-          room={room}
-          hasSubmittedOrder={pendingOrders.has(player.user_id)}
-        />
-      ))}
-    </div>
+    <Table>
+      <TableBody>
+        {players.map((player, index) => (
+          <PlayerOverviewItem
+            key={player.user_id}
+            player={player}
+            position={index + 1}
+            room={room}
+            hasSubmittedOrder={pendingOrders.has(player.user_id)}
+          />
+        ))}
+      </TableBody>
+    </Table>
   );
 }
