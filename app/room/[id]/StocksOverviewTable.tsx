@@ -43,14 +43,14 @@ function DiffBadge({
     <Badge
       variant="outline"
       className={cn(
-        "text-white border-0 h-5 px-1.5 text-xs whitespace-nowrap",
+        "text-white border-0 h-5 px-1.5 text-sm whitespace-nowrap",
         diff > 0 ? "bg-green-500" : "bg-red-500"
       )}
     >
       {diff > 0 ? (
-        <ArrowUpIcon className="w-3 h-3 mr-0.5" />
+        <ArrowUpIcon className="w-4 h-4 mr-0.5" />
       ) : (
-        <ArrowDownIcon className="w-3 h-3 mr-0.5" />
+        <ArrowDownIcon className="w-4 h-4 mr-0.5" />
       )}
       {Math.abs(diff)}
     </Badge>
@@ -126,7 +126,7 @@ const StockRow = memo(function StockRow({
         />
       </TableCell>
       <TableCell className="text-right pr-1">
-        <span className="text-lg tabular-nums">${stock.current_price}</span>
+        <span className="text-lg tabular-nums">$ {stock.current_price}</span>
       </TableCell>
       <TableCell className="pl-1">
         <DiffBadge
@@ -135,7 +135,7 @@ const StockRow = memo(function StockRow({
         />
       </TableCell>
       <TableCell className="text-right pr-1">
-        <span className="text-lg tabular-nums">${stock.dividend_amount}</span>
+        <span className="text-lg tabular-nums">$ {stock.dividend_amount}</span>
       </TableCell>
       <TableCell className="pl-1">
         <DiffBadge

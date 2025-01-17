@@ -30,6 +30,7 @@ export function StocksList({ roomId }: StocksListProps) {
   );
   const [playerCash, setPlayerCash] = useState(0);
   const [currentPhase, setCurrentPhase] = useState<RoomPhase | null>(null);
+  const [currentRound, setCurrentRound] = useState<number>(1);
   const supabase = createClientComponentClient();
   const { user, isLoading: isAuthLoading } = useUser();
 
@@ -71,7 +72,7 @@ export function StocksList({ roomId }: StocksListProps) {
             .maybeSingle(),
           supabase
             .from("rooms")
-            .select("current_phase")
+            .select("current_phase, current_round")
             .eq("id", roomId)
             .single(),
         ]);
@@ -96,6 +97,7 @@ export function StocksList({ roomId }: StocksListProps) {
       setPendingOrderStockId(pendingOrder?.stock_id || null);
       setPlayerCash(player?.cash || 0);
       setCurrentPhase(room?.current_phase || null);
+      setCurrentRound(room?.current_round || 1);
     } catch (error) {
       console.error("Error fetching stocks:", error);
     } finally {
@@ -254,7 +256,7 @@ export function StocksList({ roomId }: StocksListProps) {
                   <p className="text-sm text-muted-foreground">{stock.name}</p>
                 </div>
                 <p className="text-sm font-mono">
-                  ${stock.current_price.toLocaleString()}
+                  $ {stock.current_price.toLocaleString()}
                 </p>
               </div>
 
@@ -300,6 +302,7 @@ export function StocksList({ roomId }: StocksListProps) {
         stock={selectedStock}
         type={orderType}
         roomId={roomId}
+        round={currentRound}
         onClose={handleCloseDrawer}
         onSubmitted={handleOrderSubmitted}
       />

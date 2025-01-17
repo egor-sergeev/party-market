@@ -80,6 +80,7 @@ export interface Order {
   status: OrderStatus;
   created_at: string;
   updated_at: string;
+  round: number;
 }
 
 export interface StockEffect {

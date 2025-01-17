@@ -1,5 +1,8 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Order } from "@/lib/types/supabase";
 import { cn } from "@/lib/utils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -8,6 +11,63 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface OrderWithDetails extends Order {
   player_name: string;
   stock_symbol: string;
+}
+
+function OrderItem({ order }: { order: OrderWithDetails }) {
+  const priceBefore = order.stock_price_before || 0;
+  const priceAfter = order.stock_price_after || 0;
+  const priceDiff = priceAfter - priceBefore;
+  const isPositive = priceDiff > 0;
+  const isFailed = order.execution_quantity === 0;
+
+  return (
+    <TableRow className="animate-in fade-in-50 slide-in-from-right-5 duration-300 border-0">
+      <TableCell className="py-2 pr-6">
+        <div className="flex items-center gap-2">
+          <UserAvatar
+            name={order.player_name}
+            className="h-7 w-7"
+            fallbackClassName="text-xs"
+            showBorder={true}
+          />
+          <span className="font-medium">{order.player_name}</span>
+        </div>
+      </TableCell>
+      <TableCell className="py-2 pr-1 text-right">
+        <Badge
+          className={cn(
+            "px-2 border-0 shadow-none",
+            isFailed
+              ? "bg-gray-500/10 text-gray-500 hover:bg-gray-500/10"
+              : order.type === "buy"
+              ? "bg-green-500/10 text-green-500 hover:bg-green-500/10"
+              : "bg-red-500/10 text-red-500 hover:bg-red-500/10"
+          )}
+        >
+          {isFailed ? "Fail" : order.type === "buy" ? "Buy" : "Sell"}
+        </Badge>
+      </TableCell>
+      <TableCell className="py-2 pl-1 text-lg">
+        {order.stock_symbol} × {order.execution_quantity}
+      </TableCell>
+      <TableCell className="py-2 pr-1 text-right text-lg">
+        <span className="tabular-nums">$ {priceBefore}</span>
+      </TableCell>
+      <TableCell className="py-2 pl-0">
+        {priceDiff !== 0 && !isFailed && (
+          <span
+            className={cn(
+              "text-xs tabular-nums",
+              isPositive ? "text-green-500" : "text-red-500"
+            )}
+          >
+            {isPositive ? "+" : "-"}
+            {Math.abs(priceDiff)}
+          </span>
+        )}
+      </TableCell>
+    </TableRow>
+  );
 }
 
 export function OrdersHistory({ roomId }: { roomId: string }) {
@@ -43,8 +103,10 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
           )
           .eq("room_id", roomId)
           .in("status", ["executed", "failed"])
+          .order("round", { ascending: false })
+          .order("stock_id", { ascending: true })
           .order("updated_at", { ascending: false })
-          .limit(10);
+          .limit(15);
 
         if (ordersError) throw ordersError;
 
@@ -126,64 +188,38 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
 
   if (error) {
     return (
-      <div className="p-4 text-sm text-red-500 bg-red-50 rounded-lg">
-        Failed to load orders: {error.message}
+      <div className="rounded-lg border border-red-200 bg-red-50/5 px-3 py-2">
+        <div className="text-sm text-red-500">
+          Failed to load orders: {error.message}
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
-    return <div className="p-4 text-sm text-gray-500">Loading orders...</div>;
-  }
-
-  function getOrderStatus(order: OrderWithDetails) {
-    if (order.status === "failed") return "failed";
-    if (
-      order.execution_quantity === order.requested_quantity &&
-      order.execution_price_total === order.requested_price_total
-    )
-      return "success";
-    return "partial";
+    return (
+      <div className="space-y-3">
+        {[...Array(3)].map((_, i) => (
+          <div
+            key={i}
+            className="h-[52px] rounded-lg bg-muted/50 animate-pulse"
+          />
+        ))}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-medium">Order History</h2>
-      <div className="space-y-2 max-h-[600px] overflow-y-auto">
-        {visibleOrders.map((order) => (
-          <div
-            key={order.id}
-            className={cn(
-              "p-4 rounded-lg border animate-in fade-in slide-in-from-right-5 duration-300 fill-mode-forwards",
-              {
-                "bg-green-50 border-green-200":
-                  getOrderStatus(order) === "success",
-                "bg-yellow-50 border-yellow-200":
-                  getOrderStatus(order) === "partial",
-                "bg-red-50 border-red-200": getOrderStatus(order) === "failed",
-              }
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="text-sm font-medium">
-                  {order.player_name} {order.type === "buy" ? "bought" : "sold"}{" "}
-                  {order.execution_quantity || 0} {order.stock_symbol}
-                </div>
-
-                {getOrderStatus(order) === "partial" && (
-                  <div className="text-xs text-yellow-600">
-                    Requested: {order.requested_quantity} @ $
-                    {order.requested_price_total / order.requested_quantity}
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-gray-500">
-                Price: {order.stock_price_before} → {order.stock_price_after}
-              </div>
-            </div>
-          </div>
-        ))}
+    <div className="space-y-3">
+      <h2 className="text-lg font-medium">Recent Orders</h2>
+      <div className="max-h-[400px] overflow-y-auto pr-2">
+        <Table>
+          <TableBody>
+            {visibleOrders.map((order) => (
+              <OrderItem key={order.id} order={order} />
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

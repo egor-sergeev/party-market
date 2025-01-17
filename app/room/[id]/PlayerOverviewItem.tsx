@@ -70,13 +70,13 @@ export const PlayerOverviewItem = memo(function PlayerOverviewItem({
       </TableCell>
       <TableCell className="text-right pr-1 py-2">
         <span className="text-lg tabular-nums">
-          ${player.cash?.toLocaleString()}
+          $ {player.cash?.toLocaleString()}
         </span>
       </TableCell>
       <TableCell className="pl-1 py-2" />
       <TableCell className="text-right pr-1 py-2">
         <span className="text-lg tabular-nums">
-          ${player.net_worth?.toLocaleString()}
+          $ {player.net_worth?.toLocaleString()}
         </span>
       </TableCell>
       <TableCell className="py-2 w-4">

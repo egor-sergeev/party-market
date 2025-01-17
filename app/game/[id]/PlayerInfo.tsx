@@ -149,11 +149,11 @@ export function PlayerInfo({ roomId }: PlayerInfoProps) {
           ) : player ? (
             <div className="text-right">
               <p className="text-lg font-mono">
-                ${(player.cash - pendingOrdersTotal).toLocaleString()}
+                $ {(player.cash - pendingOrdersTotal).toLocaleString()}
               </p>
               {pendingOrdersTotal > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  ${pendingOrdersTotal.toLocaleString()} in pending orders
+                <p className="text-sm text-muted-foreground">
+                  $ {pendingOrdersTotal.toLocaleString()} in pending orders
                 </p>
               )}
             </div>

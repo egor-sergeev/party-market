@@ -24,6 +24,7 @@ interface OrderDrawerProps {
   stock: StockWithQuantity | null;
   type: "buy" | "sell" | null;
   roomId: string;
+  round: number;
   onClose: () => void;
   onSubmitted: () => void;
 }
@@ -32,6 +33,7 @@ export function OrderDrawer({
   stock,
   type,
   roomId,
+  round,
   onClose,
   onSubmitted,
 }: OrderDrawerProps) {
@@ -90,6 +92,7 @@ export function OrderDrawer({
         requested_quantity: quantity,
         requested_price_total: quantity * stock.current_price,
         status: "pending",
+        round,
       });
 
       if (error) throw error;
@@ -114,7 +117,7 @@ export function OrderDrawer({
               <div className="text-right">
                 <p className="text-sm font-medium capitalize">{type} Order</p>
                 <p className="text-sm text-muted-foreground">
-                  ${stock?.current_price.toLocaleString()} per share
+                  $ {stock?.current_price.toLocaleString()} per share
                 </p>
               </div>
             </div>
@@ -134,7 +137,7 @@ export function OrderDrawer({
               <div className="text-center">
                 <p className="text-2xl font-mono tabular-nums">{quantity}</p>
                 <p className="text-sm text-muted-foreground">
-                  ${(quantity * (stock?.current_price || 0)).toLocaleString()}
+                  $ {(quantity * (stock?.current_price || 0)).toLocaleString()}
                 </p>
               </div>
 
