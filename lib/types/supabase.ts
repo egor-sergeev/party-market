@@ -77,6 +77,7 @@ export interface Order {
   stock_price_after: number | null;
   status: OrderStatus;
   created_at: string;
+  updated_at: string;
 }
 
 export interface StockEffect {
