@@ -1,5 +1,6 @@
 import {
   DEFAULT_ROUNDS,
+  INITIAL_PLAYER_CASH,
   MAX_INITIAL_DIVIDEND_AMOUNT,
   MAX_INITIAL_STOCK_PRICE,
   MIN_INITIAL_DIVIDEND_AMOUNT,
@@ -65,6 +66,21 @@ export async function POST(
     if (stocksError) {
       console.error("Failed to insert stocks:", stocksError);
       throw stocksError;
+    }
+
+    // Initialize player cash
+    const { error: playersError } = await supabase
+      .from("players")
+      .update({
+        cash: INITIAL_PLAYER_CASH,
+        previous_cash: INITIAL_PLAYER_CASH,
+        previous_net_worth: INITIAL_PLAYER_CASH,
+      })
+      .eq("room_id", params.id);
+
+    if (playersError) {
+      console.error("Failed to initialize players:", playersError);
+      throw playersError;
     }
 
     // Update room status and total rounds

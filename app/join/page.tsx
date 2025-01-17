@@ -64,7 +64,7 @@ export default function JoinPage() {
 
       const { data: room, error: roomError } = await supabase
         .from("rooms")
-        .select("id")
+        .select("id, status")
         .eq("code", values.code.toUpperCase())
         .single();
 
@@ -73,21 +73,41 @@ export default function JoinPage() {
         return;
       }
 
-      // Upsert player record
-      const { error: playerError } = await supabase.from("players").upsert(
-        {
+      if (room.status !== "WAITING") {
+        form.setError("code", { message: "Game has already started" });
+        return;
+      }
+
+      // Check if player already exists in this room
+      const { data: existingPlayer } = await supabase
+        .from("players")
+        .select()
+        .eq("user_id", user.id)
+        .eq("room_id", room.id)
+        .maybeSingle();
+
+      let playerError;
+      if (existingPlayer) {
+        if (existingPlayer.name !== values.name) {
+          const { error } = await supabase
+            .from("players")
+            .update({ name: values.name })
+            .eq("user_id", user.id)
+            .eq("room_id", room.id);
+          playerError = error;
+        }
+      } else {
+        // Insert new player with minimal fields
+        const { error } = await supabase.from("players").insert({
           user_id: user.id,
           room_id: room.id,
           name: values.name,
           cash: INITIAL_PLAYER_CASH,
           previous_cash: INITIAL_PLAYER_CASH,
           previous_net_worth: INITIAL_PLAYER_CASH,
-        },
-        {
-          onConflict: "user_id,room_id",
-          ignoreDuplicates: false,
-        }
-      );
+        });
+        playerError = error;
+      }
 
       if (playerError) {
         form.setError("root", { message: "Failed to join room" });

@@ -134,7 +134,7 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
           newOrders.forEach((order, index) => {
             setTimeout(() => {
               setVisibleOrders((prev) => [order, ...prev]);
-            }, index * 3000);
+            }, index * 2000);
           });
 
           // Update the last updated timestamp
