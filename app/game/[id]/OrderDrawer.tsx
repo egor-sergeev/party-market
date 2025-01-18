@@ -46,7 +46,7 @@ export function OrderDrawer({
   const supabase = createClientComponentClient();
   const { user } = useUser();
 
-  const canBuy = stock && playerCash >= stock.current_price;
+  const canBuy = true;
   const canSell = stock && stock.owned_quantity > 0;
 
   useEffect(() => {
@@ -56,11 +56,10 @@ export function OrderDrawer({
     }
 
     // Auto-select type if only one option is available
-    if (canBuy && !canSell) setType("buy");
-    else if (!canBuy && canSell) setType("sell");
-    else if (canBuy && canSell) setType("buy");
-    else setType(null);
-  }, [stock, canBuy, canSell]);
+    if (!canSell) setType("buy");
+    else if (canSell) setType("sell");
+    else setType("buy");
+  }, [stock, canSell]);
 
   useEffect(() => {
     if (!stock || !type) {
@@ -72,10 +71,12 @@ export function OrderDrawer({
     if (type === "sell") {
       setMaxQuantity(stock.owned_quantity);
     } else {
-      setMaxQuantity(Math.floor(playerCash / stock.current_price));
+      // Calculate max quantity based on current cash
+      const maxBuyQuantity = Math.floor(playerCash / stock.current_price);
+      setMaxQuantity(maxBuyQuantity);
     }
     setQuantity(0);
-  }, [stock, type, playerCash]);
+  }, [stock, type, playerCash, stock?.current_price]);
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
@@ -208,12 +209,12 @@ export function OrderDrawer({
                 onClick={handleSubmit}
               >
                 {isSubmitting
-                  ? "Submitting..."
+                  ? "Adding..."
                   : type === "buy"
-                  ? `Buy ${quantity} for $${(
+                  ? `Add Buy ${quantity} for $${(
                       quantity * (stock?.current_price || 0)
                     ).toLocaleString()}`
-                  : `Sell ${quantity} for $${(
+                  : `Add Sell ${quantity} for $${(
                       quantity * (stock?.current_price || 0)
                     ).toLocaleString()}`}
               </Button>

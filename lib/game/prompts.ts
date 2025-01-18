@@ -24,12 +24,13 @@ Your ultimate goal is to analyze inputs and create event title, description and 
 2. *Action*. Based on the analysis and current game stage describe which actions you want to make in broad terms
 3. *Effects*. Create a list of stock effects (2-5)
 4. *Title*. Provide engaging and hilarious title for the event that doesn't disclose the effects
-5. *Description*. Describe in details what happens in the world of the game without disclosing the effects
+5. *Description*. Describe in details what happens in the world of the game without disclosing the effects. One sentence is enough.
 
 IMPORTANT:
 - You MUST use the following language for title and description: {language}
 - You MUST use the following tone of voice for title and description: {tone}
-- You MUST NEVER directly mention stocks and their categories in title and description
+- You MUST NEVER directly mention stocks, their categories and descriptions in title and description
+- Make a complete chaos in the game bu applying a singificant change to stock dividends 
 - These rules are only applied to title and description. Feel free to describe analysis and action in best suitable way
 `;
 

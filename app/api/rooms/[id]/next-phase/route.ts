@@ -93,6 +93,8 @@ export async function POST(
       await executeOrders(supabase, params.id);
     } else if (nextPhase === "paying_dividends") {
       await payAllDividends(supabase, params.id);
+    } else if (nextPhase === "reading_event") {
+      // Do nothing
     } else if (nextPhase === "submitting_orders") {
       // Do nothing besides updating the room state
     }

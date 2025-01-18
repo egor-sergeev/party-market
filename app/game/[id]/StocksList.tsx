@@ -24,9 +24,8 @@ export function StocksList({ roomId }: StocksListProps) {
   const [selectedStock, setSelectedStock] = useState<StockWithQuantity | null>(
     null
   );
-  const [hasPendingOrder, setHasPendingOrder] = useState(false);
-  const [pendingOrderStockId, setPendingOrderStockId] = useState<string | null>(
-    null
+  const [pendingOrderStockIds, setPendingOrderStockIds] = useState<Set<string>>(
+    new Set()
   );
   const [playerCash, setPlayerCash] = useState(0);
   const [currentPhase, setCurrentPhase] = useState<RoomPhase | null>(null);
@@ -47,7 +46,6 @@ export function StocksList({ roomId }: StocksListProps) {
           name,
           symbol,
           current_price,
-          dividend_amount,
           player_stocks!left (quantity)
         `
         )
@@ -56,7 +54,7 @@ export function StocksList({ roomId }: StocksListProps) {
 
       if (error) throw error;
 
-      const [{ data: player }, { data: pendingOrder }, { data: room }] =
+      const [{ data: player }, { data: pendingOrders }, { data: room }] =
         await Promise.all([
           supabase
             .from("players")
@@ -69,8 +67,7 @@ export function StocksList({ roomId }: StocksListProps) {
             .select("stock_id")
             .eq("room_id", roomId)
             .eq("user_id", user.id)
-            .eq("status", "pending")
-            .maybeSingle(),
+            .eq("status", "pending"),
           supabase
             .from("rooms")
             .select("current_phase, current_round")
@@ -94,8 +91,9 @@ export function StocksList({ roomId }: StocksListProps) {
           return a.id - b.id;
         })
       );
-      setHasPendingOrder(!!pendingOrder);
-      setPendingOrderStockId(pendingOrder?.stock_id || null);
+      setPendingOrderStockIds(
+        new Set(pendingOrders?.map((o) => o.stock_id) || [])
+      );
       setPlayerCash(player?.cash || 0);
       setCurrentPhase(room?.current_phase || null);
       setCurrentRound(room?.current_round || 1);
@@ -165,17 +163,13 @@ export function StocksList({ roomId }: StocksListProps) {
   const canSubmitOrders = currentPhase === "submitting_orders";
 
   const handleSelectStock = (stock: StockWithQuantity) => {
-    if (
-      !canSubmitOrders ||
-      (hasPendingOrder && pendingOrderStockId !== stock.id) ||
-      (!canBuyStock(stock) && !canSellStock(stock))
-    )
+    if (!canSubmitOrders || (!canBuyStock(stock) && !canSellStock(stock)))
       return;
     setSelectedStock(stock);
   };
 
   const canBuyStock = (stock: StockWithQuantity) => {
-    return playerCash >= stock.current_price;
+    return true; // Allow buy orders regardless of cash
   };
 
   const canSellStock = (stock: StockWithQuantity) => {
@@ -239,15 +233,14 @@ export function StocksList({ roomId }: StocksListProps) {
                 "transition-colors touch-none select-none",
                 "hover:bg-accent/50 hover:transition-none",
                 "active:bg-accent/50",
-                pendingOrderStockId === stock.id &&
+                pendingOrderStockIds.has(stock.id) &&
                   "active:bg-destructive/5 active:border-destructive/20",
                 (!canSubmitOrders ||
-                  (hasPendingOrder && pendingOrderStockId !== stock.id) ||
                   (!canBuyStock(stock) && !canSellStock(stock))) &&
-                  "opacity-50 hover:bg-card active:bg-card"
+                  "opacity-50 cursor-not-allowed hover:bg-card active:bg-card"
               )}
               onClick={(e) => {
-                if (pendingOrderStockId === stock.id) {
+                if (pendingOrderStockIds.has(stock.id)) {
                   handleCancelOrder(e, stock.id);
                 } else {
                   handleSelectStock(stock);
@@ -255,7 +248,6 @@ export function StocksList({ roomId }: StocksListProps) {
               }}
               disabled={
                 !canSubmitOrders ||
-                (hasPendingOrder && pendingOrderStockId !== stock.id) ||
                 (!canBuyStock(stock) && !canSellStock(stock))
               }
             >
@@ -269,9 +261,6 @@ export function StocksList({ roomId }: StocksListProps) {
                   <span className="tabular-nums font-medium">
                     $ {stock.current_price}
                   </span>
-                  <span className="tabular-nums font-medium">
-                    +${stock.dividend_amount || 0}
-                  </span>
                   {stock.owned_quantity > 0 && (
                     <span className="tabular-nums font-medium">
                       {stock.owned_quantity} owned
@@ -280,13 +269,12 @@ export function StocksList({ roomId }: StocksListProps) {
                 </div>
               </div>
 
-              {pendingOrderStockId === stock.id ? (
+              {pendingOrderStockIds.has(stock.id) ? (
                 <div className="shrink-0 flex items-center gap-2 text-sm text-destructive">
                   <span>Cancel</span>
                 </div>
               ) : (
-                canSubmitOrders &&
-                !hasPendingOrder && (
+                canSubmitOrders && (
                   <ChevronRightIcon className="h-5 w-5 text-muted-foreground shrink-0" />
                 )
               )}
