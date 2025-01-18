@@ -23,27 +23,33 @@ export default async function RoomPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="container py-8 space-y-8 min-h-screen pb-48">
+    <div className="container py-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <EventCard roomId={params.id} />
           <StocksOverviewTable roomId={params.id} />
         </div>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="text-2xl font-medium">
-              Round {room.current_round} / {room.total_rounds}
+        <div className="relative flex flex-col min-h-[calc(100vh-4rem)]">
+          <div className="flex-1 overflow-y-auto space-y-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-medium">
+                  Round {room.current_round} / {room.total_rounds}
+                </div>
+                <div className="flex items-center gap-4">
+                  <RoomCode code={room.code} />
+                  <RoomSettings room={room} />
+                </div>
+              </div>
+              <PlayersOverviewList roomId={params.id} />
             </div>
-            <div className="flex items-center gap-4">
-              <RoomCode code={room.code} />
-              <RoomSettings room={room} />
-            </div>
+            <OrdersHistory roomId={params.id} />
           </div>
-          <PlayersOverviewList roomId={params.id} />
-          <OrdersHistory roomId={params.id} />
+          <div className="sticky bottom-0 pb-8 pt-6 bg-gradient-to-t from-background from-50% via-background/95 to-transparent">
+            <ProgressControl roomId={params.id} />
+          </div>
         </div>
       </div>
-      <ProgressControl roomId={params.id} />
     </div>
   );
 }

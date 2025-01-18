@@ -219,15 +219,13 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
   return (
     <div className="space-y-3">
       <h2 className="text-lg font-medium">Recent Orders</h2>
-      <div className="max-h-[400px] overflow-y-auto pr-2">
-        <Table>
-          <TableBody>
-            {visibleOrders.map((order) => (
-              <OrderItem key={order.id} order={order} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <Table>
+        <TableBody>
+          {visibleOrders.map((order) => (
+            <OrderItem key={order.id} order={order} />
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

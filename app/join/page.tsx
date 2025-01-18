@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@/lib/auth";
-import { DEFAULT_INITIAL_PLAYER_CASH } from "@/lib/game-config";
+import { defaultSettings } from "@/lib/settings";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Loader2 } from "lucide-react";
@@ -97,9 +97,9 @@ export default function JoinPage() {
           user_id: user.id,
           room_id: room.id,
           name: values.name,
-          cash: DEFAULT_INITIAL_PLAYER_CASH,
-          previous_cash: DEFAULT_INITIAL_PLAYER_CASH,
-          previous_net_worth: DEFAULT_INITIAL_PLAYER_CASH,
+          cash: defaultSettings.initial_cash,
+          previous_cash: defaultSettings.initial_cash,
+          previous_net_worth: defaultSettings.initial_cash,
         });
         playerError = error;
       }

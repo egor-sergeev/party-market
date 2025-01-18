@@ -1,5 +1,4 @@
-import { DEFAULT_ROUNDS } from "./game-config";
-import { loadSettings } from "./settings";
+import { defaultSettings, loadSettings } from "./settings";
 import { Room } from "./types/supabase";
 
 export async function createRoom(): Promise<Room> {
@@ -24,7 +23,7 @@ export async function startRoom(roomId: string): Promise<void> {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ totalRounds: DEFAULT_ROUNDS }),
+    body: JSON.stringify({ totalRounds: defaultSettings.total_rounds }),
   });
 
   const data = await response.json();

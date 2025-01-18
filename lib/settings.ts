@@ -1,5 +1,11 @@
 const SETTINGS_KEY = "party-market-settings";
 
+export const MIN_INITIAL_STOCK_PRICE: number = 10;
+export const MAX_INITIAL_STOCK_PRICE: number = 350;
+export const MIN_INITIAL_DIVIDEND_AMOUNT: number = 5;
+export const MAX_INITIAL_DIVIDEND_AMOUNT: number = 100;
+
+
 export interface RoomSettings {
   initial_cash: number;
   number_of_stocks: number;

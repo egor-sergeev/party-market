@@ -188,54 +188,47 @@ export const ProgressControl = memo(function ProgressControl({
       : "Start Game";
   };
 
-  const isDisabled = isLoading || !room || (
-    room.status === "IN_PROGRESS" && 
-    room.current_phase === "submitting_orders" && 
-    pendingOrders.size < playerCount
-  );
+  const isDisabled =
+    isLoading ||
+    !room ||
+    (room.status === "IN_PROGRESS" &&
+      room.current_phase === "submitting_orders" &&
+      pendingOrders.size < playerCount);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
-      <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-2">
-        <div className="w-full max-w-2xl mx-auto">
-          <Button
-            size="lg"
-            disabled={isDisabled}
-            onClick={handleAdvance}
-            className="w-full h-16 text-lg font-semibold relative"
-          >
-            <span className="flex items-center gap-2">
-              {(isProcessing || isLoading) && (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              )}
-              {getButtonText()}
-              {!isProcessing && !isLoading && (
-                <kbd className="ml-2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                  <span className="text-xs">⌴</span>
-                  SPACE
-                </kbd>
-              )}
-            </span>
-          </Button>
-        </div>
-        <div className="text-sm text-muted-foreground h-5">
-          {!isLoading &&
-            room?.status === "IN_PROGRESS" &&
-            room.current_phase && (
+    <div className="flex flex-col gap-2 pt-2">
+      <div className="h-5 text-sm text-muted-foreground text-center font-medium">
+        {!isLoading && room?.status === "IN_PROGRESS" && room.current_phase && (
+          <>
+            {getPhaseInfo(room.current_phase)?.label}
+            {room.current_phase === "submitting_orders" && (
               <>
-                <span className="font-medium">
-                  {getPhaseInfo(room.current_phase)?.label}
-                </span>
-                {room.current_phase === "submitting_orders" && (
-                  <>
-                    {" "}
-                    • {pendingOrders.size} of {playerCount} orders submitted
-                  </>
-                )}
+                {" "}
+                • {pendingOrders.size} of {playerCount} orders submitted
               </>
             )}
-        </div>
+          </>
+        )}
       </div>
+      <Button
+        size="lg"
+        disabled={isDisabled}
+        onClick={handleAdvance}
+        className="w-full h-14 text-lg font-semibold relative"
+      >
+        <span className="flex items-center gap-2">
+          {(isProcessing || isLoading) && (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          )}
+          {getButtonText()}
+          {!isProcessing && !isLoading && (
+            <kbd className="ml-2 pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <span className="text-xs">⌴</span>
+              SPACE
+            </kbd>
+          )}
+        </span>
+      </Button>
     </div>
   );
 });

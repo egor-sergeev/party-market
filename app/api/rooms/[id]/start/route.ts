@@ -3,7 +3,7 @@ import {
   MAX_INITIAL_STOCK_PRICE,
   MIN_INITIAL_DIVIDEND_AMOUNT,
   MIN_INITIAL_STOCK_PRICE,
-} from "@/lib/game-config";
+} from "@/lib/settings";
 import type { StockTemplate } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
