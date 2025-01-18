@@ -1,11 +1,8 @@
 import {
-  DEFAULT_ROUNDS,
-  INITIAL_PLAYER_CASH,
   MAX_INITIAL_DIVIDEND_AMOUNT,
   MAX_INITIAL_STOCK_PRICE,
   MIN_INITIAL_DIVIDEND_AMOUNT,
   MIN_INITIAL_STOCK_PRICE,
-  NUMBER_OF_STOCKS,
 } from "@/lib/game-config";
 import type { StockTemplate } from "@/lib/types/supabase";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
@@ -17,8 +14,19 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { totalRounds } = await request.json();
     const supabase = createRouteHandlerClient({ cookies });
+
+    // Get room settings
+    const { data: roomSettings, error: settingsError } = await supabase
+      .from("rooms")
+      .select("initial_cash, number_of_stocks, total_rounds")
+      .eq("id", params.id)
+      .single();
+
+    if (settingsError) {
+      console.error("Failed to fetch room:", settingsError);
+      throw settingsError;
+    }
 
     // Get active stock templates
     const { data: templates, error: templatesError } = await supabase
@@ -42,7 +50,7 @@ export async function POST(
     // Generate stocks for the room
     const randomTemplates = templates
       .sort(() => Math.random() - 0.5)
-      .slice(0, NUMBER_OF_STOCKS);
+      .slice(0, roomSettings.number_of_stocks);
 
     const stocks = randomTemplates.map((template: StockTemplate) => ({
       room_id: params.id,
@@ -72,9 +80,9 @@ export async function POST(
     const { error: playersError } = await supabase
       .from("players")
       .update({
-        cash: INITIAL_PLAYER_CASH,
-        previous_cash: INITIAL_PLAYER_CASH,
-        previous_net_worth: INITIAL_PLAYER_CASH,
+        cash: roomSettings.initial_cash,
+        previous_cash: roomSettings.initial_cash,
+        previous_net_worth: roomSettings.initial_cash,
       })
       .eq("room_id", params.id);
 
@@ -89,7 +97,6 @@ export async function POST(
       .update({
         status: "IN_PROGRESS",
         current_phase: "submitting_orders",
-        total_rounds: totalRounds || DEFAULT_ROUNDS,
       })
       .eq("id", params.id);
 

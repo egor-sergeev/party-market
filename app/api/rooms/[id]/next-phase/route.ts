@@ -79,8 +79,16 @@ export async function POST(
       await applyEventEffects(supabase, params.id, room.current_round);
     } else if (nextPhase === "executing_orders") {
       // Initiate event generation for the next round
-      if (nextRound < room.total_rounds)
-        generateEvent(supabase, params.id, nextRound + 1, room.total_rounds);
+      if (nextRound < room.total_rounds) {
+        generateEvent(
+          supabase,
+          params.id,
+          nextRound + 1,
+          room.total_rounds,
+          room.events_language,
+          room.events_tone
+        );
+      }
 
       await executeOrders(supabase, params.id);
     } else if (nextPhase === "paying_dividends") {

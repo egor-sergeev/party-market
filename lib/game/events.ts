@@ -153,7 +153,9 @@ export async function generateEvent(
   supabase: SupabaseClient,
   roomId: string,
   round: number,
-  totalRounds: number
+  totalRounds: number,
+  language: string,
+  tone: string
 ) {
   // Get game state in parallel
   const [stocks, players, recentOrders] = await Promise.all([
@@ -181,8 +183,8 @@ export async function generateEvent(
     const response = await retryInvoke(() =>
       structuredLlm.invoke(
         {
-          language: "Русский",
-          tone: "матерящийся зумер, знающий все актуальные рофлы",
+          language: language,
+          tone: tone,
           round: round.toString(),
           totalRounds: totalRounds.toString(),
           stocks: stocksTable,

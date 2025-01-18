@@ -15,6 +15,10 @@ export interface Room {
   current_phase: RoomPhase;
   current_round: number;
   total_rounds: number;
+  initial_cash: number;
+  number_of_stocks: number;
+  events_tone: string;
+  events_language: string;
   created_at: string;
 }
 

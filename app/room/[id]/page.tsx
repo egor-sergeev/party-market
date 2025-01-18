@@ -6,6 +6,7 @@ import { OrdersHistory } from "./OrdersHistory";
 import { PlayersOverviewList } from "./PlayersOverviewList";
 import { ProgressControl } from "./ProgressControl";
 import { RoomCode } from "./RoomCode";
+import { RoomSettings } from "./RoomSettings";
 import { StocksOverviewTable } from "./StocksOverviewTable";
 
 export default async function RoomPage({ params }: { params: { id: string } }) {
@@ -33,7 +34,10 @@ export default async function RoomPage({ params }: { params: { id: string } }) {
             <div className="text-2xl font-medium">
               Round {room.current_round} / {room.total_rounds}
             </div>
-            <RoomCode code={room.code} />
+            <div className="flex items-center gap-4">
+              <RoomCode code={room.code} />
+              <RoomSettings room={room} />
+            </div>
           </div>
           <PlayersOverviewList roomId={params.id} />
           <OrdersHistory roomId={params.id} />

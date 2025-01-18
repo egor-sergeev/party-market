@@ -21,7 +21,7 @@ function OrderItem({ order }: { order: OrderWithDetails }) {
   const isFailed = order.execution_quantity === 0;
 
   return (
-    <TableRow className="animate-in fade-in-50 slide-in-from-right-5 duration-300 border-0">
+    <TableRow className="animate-in fade-in-50 slide-in-from-right-5 duration-300 border-0 hover:bg-transparent">
       <TableCell className="py-2 pr-6">
         <div className="flex items-center gap-2">
           <UserAvatar
@@ -103,6 +103,7 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
           )
           .eq("room_id", roomId)
           .in("status", ["executed", "failed"])
+          .in("type", ["buy", "sell"])
           .order("round", { ascending: false })
           .order("stock_id", { ascending: true })
           .order("updated_at", { ascending: false })

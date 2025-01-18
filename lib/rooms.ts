@@ -1,9 +1,15 @@
 import { DEFAULT_ROUNDS } from "./game-config";
+import { loadSettings } from "./settings";
 import { Room } from "./types/supabase";
 
 export async function createRoom(): Promise<Room> {
+  const settings = loadSettings();
   const response = await fetch("/api/rooms", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ settings }),
   });
 
   if (!response.ok) throw new Error("Failed to create room");
