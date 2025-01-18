@@ -1,7 +1,5 @@
 import {
-  MAX_INITIAL_DIVIDEND_AMOUNT,
   MAX_INITIAL_STOCK_PRICE,
-  MIN_INITIAL_DIVIDEND_AMOUNT,
   MIN_INITIAL_STOCK_PRICE,
 } from "@/lib/settings";
 import type { StockTemplate } from "@/lib/types/supabase";
@@ -52,21 +50,22 @@ export async function POST(
       .sort(() => Math.random() - 0.5)
       .slice(0, roomSettings.number_of_stocks);
 
-    const stocks = randomTemplates.map((template: StockTemplate) => ({
-      room_id: params.id,
-      name: template.name,
-      symbol: template.symbol,
-      description: template.description,
-      current_price: Math.floor(
+    const stocks = randomTemplates.map((template: StockTemplate) => {
+      const currentPrice = Math.floor(
         MIN_INITIAL_STOCK_PRICE +
           Math.random() * (MAX_INITIAL_STOCK_PRICE - MIN_INITIAL_STOCK_PRICE)
-      ),
-      dividend_amount: Math.floor(
-        MIN_INITIAL_DIVIDEND_AMOUNT +
-          Math.random() *
-            (MAX_INITIAL_DIVIDEND_AMOUNT - MIN_INITIAL_DIVIDEND_AMOUNT)
-      ),
-    }));
+      );
+      return {
+        room_id: params.id,
+        name: template.name,
+        symbol: template.symbol,
+        description: template.description,
+        current_price: currentPrice,
+        dividend_amount: Math.floor(
+          currentPrice * (0.05 + Math.random() * 0.45)
+        ), // 5-50% of price
+      };
+    });
 
     // Insert generated stocks
     const { error: stocksError } = await supabase.from("stocks").insert(stocks);
