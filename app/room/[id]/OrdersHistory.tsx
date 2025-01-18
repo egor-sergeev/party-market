@@ -136,16 +136,16 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
         // Show existing orders immediately
         setVisibleOrders(existingOrders);
 
-        // Add new orders one by one with delay
+        // Add new orders one by one with delay in descending order
         if (newOrders.length > 0) {
-          newOrders.forEach((order, index) => {
+          newOrders.reverse().forEach((order, index) => {
             setTimeout(() => {
               setVisibleOrders((prev) => [order, ...prev]);
             }, index * 2000);
           });
 
           // Update the last updated timestamp
-          lastUpdatedRef.current = newOrders[0].updated_at;
+          lastUpdatedRef.current = newOrders[newOrders.length - 1].updated_at;
         }
 
         setError(null);

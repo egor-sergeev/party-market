@@ -47,6 +47,7 @@ export function StocksList({ roomId }: StocksListProps) {
           name,
           symbol,
           current_price,
+          dividend_amount,
           player_stocks!left (quantity)
         `
         )
@@ -166,10 +167,19 @@ export function StocksList({ roomId }: StocksListProps) {
   const handleSelectStock = (stock: StockWithQuantity) => {
     if (
       !canSubmitOrders ||
-      (hasPendingOrder && pendingOrderStockId !== stock.id)
+      (hasPendingOrder && pendingOrderStockId !== stock.id) ||
+      (!canBuyStock(stock) && !canSellStock(stock))
     )
       return;
     setSelectedStock(stock);
+  };
+
+  const canBuyStock = (stock: StockWithQuantity) => {
+    return playerCash >= stock.current_price;
+  };
+
+  const canSellStock = (stock: StockWithQuantity) => {
+    return stock.owned_quantity > 0;
   };
 
   const handleCloseDrawer = () => {
@@ -232,8 +242,9 @@ export function StocksList({ roomId }: StocksListProps) {
                 pendingOrderStockId === stock.id &&
                   "active:bg-destructive/5 active:border-destructive/20",
                 (!canSubmitOrders ||
-                  (hasPendingOrder && pendingOrderStockId !== stock.id)) &&
-                  "opacity-50 cursor-not-allowed hover:bg-card active:bg-card"
+                  (hasPendingOrder && pendingOrderStockId !== stock.id) ||
+                  (!canBuyStock(stock) && !canSellStock(stock))) &&
+                  "opacity-50 hover:bg-card active:bg-card"
               )}
               onClick={(e) => {
                 if (pendingOrderStockId === stock.id) {
@@ -244,7 +255,8 @@ export function StocksList({ roomId }: StocksListProps) {
               }}
               disabled={
                 !canSubmitOrders ||
-                (hasPendingOrder && pendingOrderStockId !== stock.id)
+                (hasPendingOrder && pendingOrderStockId !== stock.id) ||
+                (!canBuyStock(stock) && !canSellStock(stock))
               }
             >
               <div className="w-10 flex items-center justify-start text-2xl shrink-0">
@@ -256,6 +268,9 @@ export function StocksList({ roomId }: StocksListProps) {
                 <div className="flex gap-3 text-sm text-muted-foreground">
                   <span className="tabular-nums font-medium">
                     $ {stock.current_price}
+                  </span>
+                  <span className="tabular-nums font-medium">
+                    +${stock.dividend_amount || 0}
                   </span>
                   {stock.owned_quantity > 0 && (
                     <span className="tabular-nums font-medium">
