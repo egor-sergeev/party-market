@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface OrderWithDetails extends Order {
   player_name: string;
   stock_symbol: string;
+  requested_quantity: number;
 }
 
 function OrderItem({ order }: { order: OrderWithDetails }) {
@@ -49,6 +50,11 @@ function OrderItem({ order }: { order: OrderWithDetails }) {
       </TableCell>
       <TableCell className="py-2 pl-1 text-lg">
         {order.stock_symbol} × {order.execution_quantity}
+        {order.requested_quantity > (order.execution_quantity || 0) && (
+          <span className="text-muted-foreground text-lg ml-1">
+            / {order.requested_quantity}
+          </span>
+        )}
       </TableCell>
       <TableCell className="py-2 pr-1 text-right text-lg">
         <span className="tabular-nums">$ {priceBefore}</span>

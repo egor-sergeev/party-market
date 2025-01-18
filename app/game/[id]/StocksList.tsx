@@ -1,10 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "@/lib/auth";
 import { RoomPhase, Stock } from "@/lib/types/supabase";
+import { cn } from "@/lib/utils";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { ChevronRightIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { OrderDrawer } from "./OrderDrawer";
 
@@ -23,7 +24,6 @@ export function StocksList({ roomId }: StocksListProps) {
   const [selectedStock, setSelectedStock] = useState<StockWithQuantity | null>(
     null
   );
-  const [orderType, setOrderType] = useState<"buy" | "sell" | null>(null);
   const [hasPendingOrder, setHasPendingOrder] = useState(false);
   const [pendingOrderStockId, setPendingOrderStockId] = useState<string | null>(
     null
@@ -163,39 +163,26 @@ export function StocksList({ roomId }: StocksListProps) {
 
   const canSubmitOrders = currentPhase === "submitting_orders";
 
-  const canBuyStock = (stock: StockWithQuantity) => {
-    return (
-      canSubmitOrders && !hasPendingOrder && playerCash >= stock.current_price
-    );
-  };
-
-  const canSellStock = (stock: StockWithQuantity) => {
-    return canSubmitOrders && !hasPendingOrder && stock.owned_quantity > 0;
-  };
-
-  const handleOrder = (stock: StockWithQuantity, type: "buy" | "sell") => {
-    if (!canSubmitOrders) return;
+  const handleSelectStock = (stock: StockWithQuantity) => {
+    if (
+      !canSubmitOrders ||
+      (hasPendingOrder && pendingOrderStockId !== stock.id)
+    )
+      return;
     setSelectedStock(stock);
-    setOrderType(type);
   };
 
   const handleCloseDrawer = () => {
     setSelectedStock(null);
-    setOrderType(null);
   };
-
-  useEffect(() => {
-    if (!canSubmitOrders) {
-      handleCloseDrawer();
-    }
-  }, [canSubmitOrders]);
 
   const handleOrderSubmitted = () => {
     handleCloseDrawer();
     fetchStocks();
   };
 
-  const handleCancelOrder = async (stockId: string) => {
+  const handleCancelOrder = async (e: React.MouseEvent, stockId: string) => {
+    e.stopPropagation();
     try {
       const { error } = await supabase
         .from("orders")
@@ -213,98 +200,93 @@ export function StocksList({ roomId }: StocksListProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {isLoading ? (
         <>
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className="flex items-center justify-between p-4 rounded-lg border bg-card text-card-foreground shadow-sm"
+              className="flex items-center p-3 pl-6 rounded-lg border bg-card text-card-foreground shadow-sm gap-6 text-left"
             >
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <Skeleton className="h-5 w-16" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-                <Skeleton className="h-4 w-24 mt-1" />
+              <div className="w-12 flex items-center justify-start">
+                <Skeleton className="h-8 w-8" />
               </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-24 text-center">
-                  <Skeleton className="h-5 w-12 mx-auto" />
-                  <Skeleton className="h-3 w-8 mx-auto mt-1" />
-                </div>
-
-                <div className="flex gap-2">
-                  <Skeleton className="h-9 w-16" />
-                  <Skeleton className="h-9 w-16" />
-                </div>
+              <div className="flex-1 min-w-0">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-24 mt-1.5" />
               </div>
+              <Skeleton className="h-8 w-8" />
             </div>
           ))}
         </>
       ) : (
         <>
           {stocks.map((stock) => (
-            <div
+            <button
               key={stock.id}
-              className="flex items-center justify-between p-4 rounded-lg border bg-card text-card-foreground shadow-sm"
+              className={cn(
+                "flex items-center w-full py-3 px-4 rounded-lg border bg-card text-card-foreground shadow-sm text-left",
+                "transition-colors touch-none select-none",
+                "hover:bg-accent/50 hover:transition-none",
+                "active:bg-accent/50",
+                pendingOrderStockId === stock.id &&
+                  "active:bg-destructive/5 active:border-destructive/20",
+                (!canSubmitOrders ||
+                  (hasPendingOrder && pendingOrderStockId !== stock.id)) &&
+                  "opacity-50 cursor-not-allowed hover:bg-card active:bg-card"
+              )}
+              onClick={(e) => {
+                if (pendingOrderStockId === stock.id) {
+                  handleCancelOrder(e, stock.id);
+                } else {
+                  handleSelectStock(stock);
+                }
+              }}
+              disabled={
+                !canSubmitOrders ||
+                (hasPendingOrder && pendingOrderStockId !== stock.id)
+              }
             >
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <h3 className="font-mono font-medium">{stock.symbol}</h3>
-                  <p className="text-sm text-muted-foreground">{stock.name}</p>
-                </div>
-                <p className="text-sm font-mono">
-                  $ {stock.current_price.toLocaleString()}
-                </p>
+              <div className="w-10 flex items-center justify-start text-2xl shrink-0">
+                {stock.symbol}
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="w-24 text-center">
-                  <p className="font-mono">{stock.owned_quantity}</p>
-                  <p className="text-xs text-muted-foreground">owned</p>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{stock.name}</div>
+                <div className="flex gap-3 text-sm text-muted-foreground">
+                  <span className="tabular-nums font-medium">
+                    $ {stock.current_price}
+                  </span>
+                  {stock.owned_quantity > 0 && (
+                    <span className="tabular-nums font-medium">
+                      {stock.owned_quantity} owned
+                    </span>
+                  )}
                 </div>
-
-                {pendingOrderStockId === stock.id ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => handleCancelOrder(stock.id)}
-                    disabled={!canSubmitOrders}
-                  >
-                    Cancel Order
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => handleOrder(stock, "buy")}
-                      disabled={!canBuyStock(stock)}
-                    >
-                      Buy
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleOrder(stock, "sell")}
-                      disabled={!canSellStock(stock)}
-                    >
-                      Sell
-                    </Button>
-                  </div>
-                )}
               </div>
-            </div>
+
+              {pendingOrderStockId === stock.id ? (
+                <div className="shrink-0 flex items-center gap-2 text-sm text-destructive">
+                  <span>Cancel</span>
+                </div>
+              ) : (
+                canSubmitOrders &&
+                !hasPendingOrder && (
+                  <ChevronRightIcon className="h-5 w-5 text-muted-foreground shrink-0" />
+                )
+              )}
+            </button>
           ))}
         </>
       )}
 
       <OrderDrawer
         stock={selectedStock}
-        type={orderType}
-        roomId={roomId}
-        round={currentRound}
         onClose={handleCloseDrawer}
         onSubmitted={handleOrderSubmitted}
+        playerCash={playerCash}
+        roomId={roomId}
+        round={currentRound}
       />
     </div>
   );

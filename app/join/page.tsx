@@ -73,11 +73,6 @@ export default function JoinPage() {
         return;
       }
 
-      if (room.status !== "WAITING") {
-        form.setError("code", { message: "Game has already started" });
-        return;
-      }
-
       // Check if player already exists in this room
       const { data: existingPlayer } = await supabase
         .from("players")
@@ -176,7 +171,7 @@ export default function JoinPage() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-12"
               disabled={isLoading || form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? (
