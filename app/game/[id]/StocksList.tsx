@@ -12,6 +12,7 @@ import { OrderDrawer } from "./OrderDrawer";
 interface StockWithQuantity extends Stock {
   owned_quantity: number;
   total_worth: number;
+  dividend: number;
 }
 
 interface StocksListProps {
@@ -46,6 +47,7 @@ export function StocksList({ roomId }: StocksListProps) {
           name,
           symbol,
           current_price,
+          dividend_amount,
           player_stocks!left (quantity)
         `
         )
@@ -230,8 +232,7 @@ export function StocksList({ roomId }: StocksListProps) {
               key={stock.id}
               className={cn(
                 "flex items-center w-full py-3 px-4 rounded-lg border bg-card text-card-foreground shadow-sm text-left",
-                "transition-colors touch-none select-none",
-                "hover:bg-accent/50 hover:transition-none",
+                "transition-colors hover:bg-accent/50",
                 "active:bg-accent/50",
                 pendingOrderStockIds.has(stock.id) &&
                   "active:bg-destructive/5 active:border-destructive/20",
@@ -261,6 +262,11 @@ export function StocksList({ roomId }: StocksListProps) {
                   <span className="tabular-nums font-medium">
                     $ {stock.current_price}
                   </span>
+                  {stock.dividend_amount > 0 && (
+                    <span className="tabular-nums font-medium">
+                      +${stock.dividend_amount}
+                    </span>
+                  )}
                   {stock.owned_quantity > 0 && (
                     <span className="tabular-nums font-medium">
                       {stock.owned_quantity} owned

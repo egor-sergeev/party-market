@@ -91,6 +91,22 @@ export function OrderDrawer({
     try {
       setIsSubmitting(true);
 
+      // Check existing pending orders
+      const { data: pendingOrders, error: countError } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("room_id", roomId)
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .in("type", ["buy", "sell"]);
+
+      if (countError) throw countError;
+
+      if (pendingOrders && pendingOrders.length >= 2) {
+        alert("You can only have 2 pending orders at a time");
+        return;
+      }
+
       const { error } = await supabase.from("orders").insert({
         room_id: roomId,
         user_id: user.id,

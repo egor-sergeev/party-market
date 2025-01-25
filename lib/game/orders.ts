@@ -41,11 +41,23 @@ async function executeOrder(
   let result: ExecutionResult;
 
   if (order.type === "buy") {
-    const affordableQuantity = Math.floor(
+    // Get current cash balance
+    const { data: player } = await supabase
+      .from("players")
+      .select("cash")
+      .eq("user_id", order.user_id)
+      .eq("room_id", roomId)
+      .single();
+
+    if (!player) throw new Error("Player not found");
+
+    const affordableQuantityByPrice = Math.floor(
       order.requested_price_total / currentPrice
     );
+    const affordableQuantityByCash = Math.floor(player.cash / currentPrice);
     const actualQuantity = Math.min(
-      affordableQuantity,
+      affordableQuantityByPrice,
+      affordableQuantityByCash,
       order.requested_quantity
     );
     result = {

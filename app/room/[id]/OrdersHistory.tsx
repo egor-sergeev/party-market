@@ -113,7 +113,7 @@ export function OrdersHistory({ roomId }: { roomId: string }) {
           .order("round", { ascending: false })
           .order("stock_id", { ascending: true })
           .order("updated_at", { ascending: false })
-          .limit(15);
+          .limit(50);
 
         if (ordersError) throw ordersError;
 

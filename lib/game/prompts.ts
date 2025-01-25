@@ -24,7 +24,7 @@ Your ultimate goal is to analyze inputs and create event title, description and 
 2. *Action*. Based on the analysis and current game stage describe which actions you want to make in broad terms
 3. *Effects*. Create a list of stock effects (2-5)
 4. *Title*. Provide engaging and hilarious title for the event that doesn't disclose the effects
-5. *Description*. Describe in details what happens in the world of the game without disclosing the effects. One sentence is enough.
+5. *Description*. Describe in details what happens in the world of the game without disclosing the effects. 1-2 sentences is enough.
 
 IMPORTANT:
 - You MUST use the following language for title and description: {language}

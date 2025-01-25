@@ -26,12 +26,7 @@ export function EventCard({ roomId }: EventCardProps) {
 
   // Auto-expand on order execution phase
   useEffect(() => {
-    if (room?.current_phase === "executing_orders") {
-      setIsOpen(true);
-    } else if (room?.current_phase === "paying_dividends") {
-      setIsOpen(false);
-    }
-    // Do nothing for other phases
+    setIsOpen(true);
   }, [room?.current_phase]);
 
   const fetchData = useCallback(async () => {
@@ -121,11 +116,7 @@ export function EventCard({ roomId }: EventCardProps) {
   }
 
   if (!event || !room) {
-    return (
-      <Card className="h-[120px] flex items-center justify-center bg-muted/30">
-        <p className="text-sm text-muted-foreground">No event for this round</p>
-      </Card>
-    );
+    return null;
   }
 
   const shouldShowEffects = (room: Room) =>
